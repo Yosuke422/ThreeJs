@@ -1,4 +1,5 @@
 import { initGame } from './game.js';
+import { createMainMenu } from './menu.js';
 
-// Start the game
-initGame(); 
+// Start with the main menu instead of directly initializing the game
+createMainMenu(); 

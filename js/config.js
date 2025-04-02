@@ -156,8 +156,8 @@ export const getCellSize = () => (platformSize * 2) / gameState.mazeLayout[0].le
 // Player physics parameters
 export const playerHeight = 2.0;
 export const playerRadius = 0.4; // Slightly smaller to navigate maze
-export const gravity = 30.0;
-export const jumpVelocity = 10.0;
+export const gravity = 25.0; // Reduced gravity for longer jumps
+export const jumpVelocity = 10.0; // Increased jump velocity
 export const playerSpeed = 5.0; // Slower speed for maze navigation
 
 // Coin configuration - more coins for higher levels

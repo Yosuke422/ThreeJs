@@ -10,7 +10,7 @@ const direction = new THREE.Vector3();
 let isOnGround = true;
 let isJumping = false;
 let jumpHeight = 0;
-const maxJumpHeight = 1.0; // Maximum height player can jump
+const maxJumpHeight = 1.0; // Increased maximum height player can jump
 
 // Key mapping for controls
 const keys = {

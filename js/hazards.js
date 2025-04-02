@@ -16,6 +16,9 @@ let healthBar = null;
 let spikesActivated = true;
 let lastSpikeToggleTime = 0;
 
+// Track whether the player has seen the spike tutorial message
+let hasShownSpikeTutorial = false;
+
 // Initialize hazards system
 export function createHazards(scene, theme) {
     // Reset health - make it level-dependent
@@ -112,6 +115,33 @@ function updateHealthBar() {
     }
 }
 
+// Function to check if cell is in a narrow corridor (only one path)
+function isInNarrowCorridor(i, j, mazeLayout) {
+    // Count walls around this cell (N, E, S, W)
+    let wallCount = 0;
+    
+    // Check all four directions for walls
+    if (i <= 0 || i >= mazeLayout.length - 1 || mazeLayout[i-1][j] === 1) wallCount++; // North
+    if (j >= mazeLayout[0].length - 1 || mazeLayout[i][j+1] === 1) wallCount++; // East
+    if (i >= mazeLayout.length - 1 || mazeLayout[i+1][j] === 1) wallCount++; // South
+    if (j <= 0 || mazeLayout[i][j-1] === 1) wallCount++; // West
+    
+    // If there are 3 walls, this is a dead end
+    if (wallCount >= 3) return true;
+    
+    // If there are only 2 walls opposite each other, this is a narrow corridor
+    const hasNorthWall = (i <= 0 || mazeLayout[i-1][j] === 1);
+    const hasSouthWall = (i >= mazeLayout.length - 1 || mazeLayout[i+1][j] === 1);
+    const hasEastWall = (j >= mazeLayout[0].length - 1 || mazeLayout[i][j+1] === 1);
+    const hasWestWall = (j <= 0 || mazeLayout[i][j-1] === 1);
+    
+    // Check if walls are on opposite sides (creating a corridor with only one path)
+    const isNorthSouthCorridor = hasNorthWall && hasSouthWall && !hasEastWall && !hasWestWall;
+    const isEastWestCorridor = hasEastWall && hasWestWall && !hasNorthWall && !hasSouthWall;
+    
+    return isNorthSouthCorridor || isEastWestCorridor;
+}
+
 // Generate spike traps in the maze
 function generateSpikeTraps(scene, theme) {
     const mazeLayout = getMazeLayout();
@@ -141,6 +171,15 @@ function generateSpikeTraps(scene, theme) {
         emissiveIntensity: 0.2
     });
     
+    // Material for visual indicators
+    const indicatorMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff4500,  // Orange-red
+        transparent: true,
+        opacity: 0.5,
+        emissive: new THREE.Color(0xff4500),
+        emissiveIntensity: 0.8
+    });
+    
     // Find valid cells for spike placement (path cells)
     const validCells = [];
     
@@ -154,7 +193,8 @@ function generateSpikeTraps(scene, theme) {
                     (i === 0 && j === 1) || // Avoid cell right after start
                     (i === mazeLayout.length - 1 && j === mazeLayout[0].length - 1) ||
                     (i === mazeLayout.length - 2 && j === mazeLayout[0].length - 1) || // Avoid cell before finish
-                    (i === mazeLayout.length - 1 && j === mazeLayout[0].length - 2)) { // Avoid cell before finish
+                    (i === mazeLayout.length - 1 && j === mazeLayout[0].length - 2) ||
+                    isInNarrowCorridor(i, j, mazeLayout)) { // Also avoid narrow corridors
                     continue;
                 }
                 
@@ -167,125 +207,295 @@ function generateSpikeTraps(scene, theme) {
     const shuffledCells = validCells.sort(() => Math.random() - 0.5);
     
     // Select a percentage of cells for spike placement - increase with level
-    const baseSpikePercentage = 0.15;
-    const spikePercentage = Math.min(0.35, baseSpikePercentage + (currentLevel * 0.02));
+    const baseSpikePercentage = 0.10;
+    const spikePercentage = Math.min(0.25, baseSpikePercentage + (currentLevel * 0.015));
     const numSpikeCells = Math.ceil(shuffledCells.length * spikePercentage);
     
-    // Track cells with spikes to avoid consecutive row placements
+    // Track cells with spikes to avoid consecutive placements
     const cellsWithSpikes = new Set();
     
-    for (let idx = 0; idx < numSpikeCells; idx++) {
-        const cell = shuffledCells[idx];
-        
-        // Check if placing a spike here would create 3 or more consecutive spikes
-        // by checking all 4 directions (horizontal and vertical)
-        const hasConsecutiveHorizontal = 
-            (cellsWithSpikes.has(`${cell.i},${cell.j-1}`) && cellsWithSpikes.has(`${cell.i},${cell.j-2}`)) || 
-            (cellsWithSpikes.has(`${cell.i},${cell.j+1}`) && cellsWithSpikes.has(`${cell.i},${cell.j+2}`)) ||
-            (cellsWithSpikes.has(`${cell.i},${cell.j-1}`) && cellsWithSpikes.has(`${cell.i},${cell.j+1}`));
-            
-        const hasConsecutiveVertical = 
-            (cellsWithSpikes.has(`${cell.i-1},${cell.j}`) && cellsWithSpikes.has(`${cell.i-2},${cell.j}`)) || 
-            (cellsWithSpikes.has(`${cell.i+1},${cell.j}`) && cellsWithSpikes.has(`${cell.i+2},${cell.j}`)) ||
-            (cellsWithSpikes.has(`${cell.i-1},${cell.j}`) && cellsWithSpikes.has(`${cell.i+1},${cell.j}`));
-            
-        // STRICT ENFORCEMENT: If this would create 3 consecutive spikes, always skip
-        if (hasConsecutiveHorizontal || hasConsecutiveVertical) {
-            continue;
-        }
-        
-        // Also check adjacent cells - 50% chance to skip if adjacent to avoid double spikes
-        const hasAdjacentSpikes = 
-            cellsWithSpikes.has(`${cell.i},${cell.j-1}`) || 
-            cellsWithSpikes.has(`${cell.i},${cell.j+1}`) ||
-            cellsWithSpikes.has(`${cell.i-1},${cell.j}`) ||
-            cellsWithSpikes.has(`${cell.i+1},${cell.j}`);
-        
-        // Always 50% chance to place adjacent spikes, regardless of level
-        if (hasAdjacentSpikes && Math.random() < 0.5) {
-            continue;
-        }
-        
-        // Convert grid position to world coordinates
-        const x = -platformSize + cell.j * cellSize + cellSize/2;
-        const z = -platformSize + cell.i * cellSize + cellSize/2;
-        
-        // Create spike trap that fills the entire cell
-        const spikeGroup = createFullCellSpikes(spikeMaterial, cellSize, currentLevel);
-        
-        // Position spike trap
-        spikeGroup.position.set(x, 0.01, z); // Slightly above floor to avoid z-fighting
-        
-        // Add to spikes group
-        spikesGroup.add(spikeGroup);
-        
-        // Set collision radius to match nearly the full cell size 
-        const collisionRadius = cellSize * 0.45;
-        
-        // Determine spike properties based on level
-        let spikeDamage = 10; // Base damage
-        let spikeSpeed = 0; // Speed for moving spikes
-        let spikeIsTimed = false; // Whether spike is timed (on/off)
-        let spikeTimingOffset = 0; // Offset for timed spikes
-        
-        // Add level-based enhancements
-        if (currentLevel >= 3) {
-            // Increase damage with level
-            spikeDamage += Math.min(15, Math.floor(currentLevel * 2));
-        }
-        
-        // Add timed spikes after level 5 - increase chance with level
-        if (currentLevel >= 3) {
-            // 40% chance for timed spikes at level 5, increasing with level
-            const timedChance = Math.min(0.7, 0.2 + (currentLevel * 0.05));
-            if (Math.random() < timedChance) {
-                spikeIsTimed = true;
-                spikeTimingOffset = Math.random() * 3000; // Random offset for variety
+    // Function to check if a spike would create too many consecutive spikes
+    function wouldCreateTooManyConsecutiveSpikes(row, col) {
+        // Check horizontal (left side)
+        let consecutiveLeft = 0;
+        for (let j = 1; j <= 2; j++) {
+            if (cellsWithSpikes.has(`${row},${col-j}`)) {
+                consecutiveLeft++;
+            } else {
+                break;
             }
         }
         
-        // Add moving spikes after level 7 - increase chance with level
-        if (currentLevel >= 4) {
-            // 20% chance for moving spikes at level 7, increasing with level
-            const movingChance = Math.min(0.6, (currentLevel - 3) * 0.1);
-            if (Math.random() < movingChance) {
-                // Moving spikes - oscillate up and down
-                spikeSpeed = 0.8 + (Math.random() * 0.7); // Faster random speed
+        // Check horizontal (right side)
+        let consecutiveRight = 0;
+        for (let j = 1; j <= 2; j++) {
+            if (cellsWithSpikes.has(`${row},${col+j}`)) {
+                consecutiveRight++;
+            } else {
+                break;
             }
         }
         
-        // Store spike data for collision detection
-        spikes.push({
-            position: new THREE.Vector3(x, 0, z),
-            radius: collisionRadius,
-            damage: spikeDamage,
-            active: true,
-            cell: { i: cell.i, j: cell.j }, // Store cell coordinates
-            
-            // Advanced features
-            isTimed: spikeIsTimed,
-            timingOffset: spikeTimingOffset,
-            isMoving: spikeSpeed > 0,
-            speed: spikeSpeed,
-            phase: Math.random() * Math.PI * 2, // Random starting phase
-            originalY: 0.01,
-            
-            // Reference to the mesh
-            mesh: spikeGroup,
-            
-            // Defaults for animation state
-            animatingUp: false,
-            animatingDown: false,
-            animationStartTime: 0,
-            animationDuration: 150
-        });
+        // Check vertical (up)
+        let consecutiveUp = 0;
+        for (let i = 1; i <= 2; i++) {
+            if (cellsWithSpikes.has(`${row-i},${col}`)) {
+                consecutiveUp++;
+            } else {
+                break;
+            }
+        }
         
-        // Mark this cell as having spikes
-        cellsWithSpikes.add(`${cell.i},${cell.j}`);
+        // Check vertical (down)
+        let consecutiveDown = 0;
+        for (let i = 1; i <= 2; i++) {
+            if (cellsWithSpikes.has(`${row+i},${col}`)) {
+                consecutiveDown++;
+            } else {
+                break;
+            }
+        }
+        
+        // Horizontal issue: Check if placing this spike would create more than 2 consecutive spikes
+        // in any horizontal sequence
+        const horizontalProblem = 
+            // Case 1: Already 2 consecutive spikes to the left
+            consecutiveLeft >= 2 || 
+            // Case 2: Already 2 consecutive spikes to the right
+            consecutiveRight >= 2 || 
+            // Case 3: 1 spike left + this + 1 spike right would make 3 consecutive
+            (consecutiveLeft >= 1 && consecutiveRight >= 1) ||
+            // Case 4: 1 spike left + this would connect to another sequence
+            (consecutiveLeft >= 1 && cellsWithSpikes.has(`${row},${col+1}`)) ||
+            // Case 5: this + 1 spike right would connect to another sequence
+            (consecutiveRight >= 1 && cellsWithSpikes.has(`${row},${col-1}`));
+            
+        // Vertical issue: Check if placing this spike would create more than 2 consecutive spikes
+        // in any vertical sequence
+        const verticalProblem = 
+            // Case 1: Already 2 consecutive spikes above
+            consecutiveUp >= 2 || 
+            // Case 2: Already 2 consecutive spikes below
+            consecutiveDown >= 2 || 
+            // Case 3: 1 spike above + this + 1 spike below would make 3 consecutive
+            (consecutiveUp >= 1 && consecutiveDown >= 1) ||
+            // Case 4: 1 spike above + this would connect to another sequence
+            (consecutiveUp >= 1 && cellsWithSpikes.has(`${row+1},${col}`)) ||
+            // Case 5: this + 1 spike below would connect to another sequence
+            (consecutiveDown >= 1 && cellsWithSpikes.has(`${row-1},${col}`));
+            
+        // Diagonal checks (prevent spike clusters that would be impossible to navigate)
+        const diagonalProblem = 
+            // Check diagonals for possible L-shapes or blocks of spikes
+            (cellsWithSpikes.has(`${row-1},${col-1}`) && cellsWithSpikes.has(`${row-1},${col}`) && cellsWithSpikes.has(`${row},${col-1}`)) ||
+            (cellsWithSpikes.has(`${row-1},${col+1}`) && cellsWithSpikes.has(`${row-1},${col}`) && cellsWithSpikes.has(`${row},${col+1}`)) ||
+            (cellsWithSpikes.has(`${row+1},${col-1}`) && cellsWithSpikes.has(`${row+1},${col}`) && cellsWithSpikes.has(`${row},${col-1}`)) ||
+            (cellsWithSpikes.has(`${row+1},${col+1}`) && cellsWithSpikes.has(`${row+1},${col}`) && cellsWithSpikes.has(`${row},${col+1}`));
+        
+        return horizontalProblem || verticalProblem || diagonalProblem;
     }
     
-    // Store cells with spikes globally for coin placement
-    window.cellsWithSpikes = cellsWithSpikes;
+    // Count the spikes actually placed
+    let spikesPlaced = 0;
+    const maxSpikesToPlace = numSpikeCells;
+    
+    // Try to place spikes, limiting to max attempts to avoid infinite loop
+    const maxAttempts = shuffledCells.length * 2;
+    let attempts = 0;
+    
+    while (spikesPlaced < maxSpikesToPlace && attempts < maxAttempts) {
+        attempts++;
+        
+        // Get next candidate cell (cycling if needed)
+        const cellIndex = attempts % shuffledCells.length;
+        const cell = shuffledCells[cellIndex];
+        
+        // Skip if this cell already has a spike
+        if (cellsWithSpikes.has(`${cell.i},${cell.j}`)) {
+            continue;
+        }
+        
+        // Skip if this would create too many consecutive spikes
+        if (wouldCreateTooManyConsecutiveSpikes(cell.i, cell.j)) {
+            continue;
+        }
+        
+        // This cell is good for a spike trap - mark it
+        cellsWithSpikes.add(`${cell.i},${cell.j}`);
+        spikesPlaced++;
+        
+        // Calculate position in world space
+        const x = -platformSize + (cell.j * cellSize) + (cellSize / 2);
+        const z = -platformSize + (cell.i * cellSize) + (cellSize / 2);
+        
+        // Create full cell of spikes
+        const spikeHeight = 0.15 + (Math.random() * 0.05);
+        const spikeSet = createFullCellSpikes(spikeMaterial, cellSize, currentLevel);
+        
+        // Position spikes
+        spikeSet.position.set(x, 0.01, z);
+        
+        // Add spike set to group
+        spikesGroup.add(spikeSet);
+        
+        // Store spike info for collision detection
+        spikes.push({
+            position: new THREE.Vector3(x, 0, z),
+            radius: cellSize / 2 * 0.8, // Slightly smaller than cell
+            damage: 10 + (currentLevel * 2),  // Damage increases with level
+            mesh: spikeSet,
+            activated: true, // Start with activated spikes
+            type: 'spikes',
+            cell: { i: cell.i, j: cell.j }
+        });
+    }
+    
+    console.log(`Placed ${spikesPlaced} spike traps out of ${numSpikeCells} desired`);
+    
+    // Add the spikes group to the scene
+    scene.add(spikesGroup);
+    
+    // Function to find connected groups of spikes
+    function findConnectedSpikes() {
+        // Group spikes that are adjacent to each other
+        const connectedGroups = [];
+        const visited = new Set();
+        
+        // For each cell with spikes
+        for (const cellKey of cellsWithSpikes) {
+            // Skip if already processed
+            if (visited.has(cellKey)) continue;
+            
+            // Parse coordinates
+            const [i, j] = cellKey.split(',').map(Number);
+            
+            // Start a new group
+            const group = [{ i, j }];
+            visited.add(cellKey);
+            
+            // Add connected cells using a queue
+            const queue = [{i, j}];
+            
+            while (queue.length > 0) {
+                const {i: ci, j: cj} = queue.shift();
+                
+                // Check adjacent cells (horizontal and vertical)
+                const neighbors = [
+                    {i: ci-1, j: cj}, // up
+                    {i: ci+1, j: cj}, // down
+                    {i: ci, j: cj-1}, // left
+                    {i: ci, j: cj+1}  // right
+                ];
+                
+                for (const {i: ni, j: nj} of neighbors) {
+                    const neighborKey = `${ni},${nj}`;
+                    
+                    // If this is a spike and not visited yet
+                    if (cellsWithSpikes.has(neighborKey) && !visited.has(neighborKey)) {
+                        // Add to group
+                        group.push({i: ni, j: nj});
+                        visited.add(neighborKey);
+                        queue.push({i: ni, j: nj});
+                    }
+                }
+            }
+            
+            // Only add groups with more than 1 spike
+            if (group.length > 1) {
+                connectedGroups.push(group);
+            }
+        }
+        
+        return connectedGroups;
+    }
+    
+    // Create visual indicators for connected spike groups
+    const connectedGroups = findConnectedSpikes();
+    
+    for (const group of connectedGroups) {
+        // Create a merged indicator for the group
+        if (group.length > 1) {
+            // Highlight cells with connected spikes
+            for (const {i, j} of group) {
+                // Calculate position in world space
+                const x = -platformSize + j * cellSize + cellSize/2;
+                const z = -platformSize + i * cellSize + cellSize/2;
+                
+                // Create a visual indicator above the spikes
+                const indicatorGeometry = new THREE.BoxGeometry(cellSize * 0.9, 0.05, cellSize * 0.9);
+                const indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+                
+                // Position indicator above spikes
+                indicator.position.set(x, 0.4, z);
+                
+                // Add to scene
+                spikesGroup.add(indicator);
+            }
+            
+            // Also add a text hint
+            // Convert to world coordinates for the first cell in the group
+            const firstCell = group[0];
+            const x = -platformSize + firstCell.j * cellSize + cellSize/2;
+            const z = -platformSize + firstCell.i * cellSize + cellSize/2;
+            
+            // Create helpful text sprite
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 512; // Larger canvas for better quality
+            canvas.height = 256;
+            
+            // Create gradient background
+            const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
+            gradient.addColorStop(1, 'rgba(255, 50, 0, 0.8)');
+            
+            // Clear the canvas with gradient
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Add border
+            context.strokeStyle = 'yellow';
+            context.lineWidth = 5;
+            context.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+            
+            // Add text
+            context.font = 'bold 80px Arial';
+            context.fillStyle = 'yellow';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.shadowColor = 'black';
+            context.shadowBlur = 10;
+            context.shadowOffsetX = 2;
+            context.shadowOffsetY = 2;
+            context.fillText('JUMP!', canvas.width/2, canvas.height/2);
+            
+            // Create texture from canvas
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ 
+                map: texture,
+                transparent: true
+            });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            
+            // Position above the spikes
+            sprite.position.set(x, 2.0, z);
+            sprite.scale.set(2.0, 1.0, 1.0);
+            
+            // Add animation data to make it float up and down
+            sprite.userData = {
+                baseY: 2.0,
+                animationPhase: Math.random() * Math.PI * 2
+            };
+            
+            // Store reference for animation
+            group[0].userData.jumpSprite = sprite;
+            
+            // Add to scene
+            spikesGroup.add(sprite);
+        }
+    }
+    
+    return spikes;
 }
 
 // Create spikes that fill the entire cell
@@ -451,12 +661,15 @@ export function updateSpikes(deltaTime) {
         }
     }
     
+    // Animate all jump sprites
+    animateJumpSprites(currentTime);
+    
     // Update individual spike animations
     for (let i = 0; i < spikes.length; i++) {
         const spike = spikes[i];
         
-        // Skip if not active or mesh doesn't exist
-        if (!spike || !spike.active || !spike.mesh) continue;
+        // Skip if not activated or mesh doesn't exist
+        if (!spike || !spike.activated || !spike.mesh) continue;
         
         // Safety check - make sure the mesh is valid
         const mesh = spike.mesh;
@@ -648,11 +861,64 @@ export function updateSpikes(deltaTime) {
     }
 }
 
+// Animate the JUMP! sprites to make them more noticeable
+function animateJumpSprites(currentTime) {
+    if (!spikesGroup) return;
+    
+    // Find all sprites in the spikes group
+    spikesGroup.traverse((object) => {
+        // Check if this is a sprite with jump animation data
+        if (object instanceof THREE.Sprite && 
+            object.userData && 
+            object.userData.baseY !== undefined) {
+            
+            // Calculate bobbing motion (up and down)
+            const frequency = 1.5; // Speed of animation
+            const amplitude = 0.3; // Height of bobbing
+            const phase = object.userData.animationPhase || 0;
+            
+            // Calculate new Y position with sine wave
+            const newY = object.userData.baseY + Math.sin((currentTime * 0.001 * frequency) + phase) * amplitude;
+            
+            // Apply new position
+            object.position.y = newY;
+            
+            // Also pulse the scale a bit for attention
+            const scalePulse = 1.0 + Math.sin((currentTime * 0.002 * frequency) + phase) * 0.1;
+            object.scale.set(2.0 * scalePulse, 1.0 * scalePulse, 1.0);
+        }
+    });
+}
+
 // Check for spike collisions
 export function checkSpikeCollisions(playerPosition) {
-    if (!hazardsActive || Date.now() - lastHitTime < hitCooldown) return false;
+    // Only proceed if hazards are active
+    if (!hazardsActive) return false;
     
-    // Get the cell size and platform size
+    // Find the nearest spike to player for tutorial purposes
+    let nearestSpike = null;
+    let nearestDistance = Infinity;
+    
+    for (const spike of spikes) {
+        const distance = new THREE.Vector2(
+            playerPosition.x - spike.position.x,
+            playerPosition.z - spike.position.z
+        ).length();
+        
+        if (distance < nearestDistance) {
+            nearestDistance = distance;
+            nearestSpike = spike;
+        }
+    }
+    
+ 
+    
+    // If player was recently hit, don't check for collisions again
+    if (Date.now() - lastHitTime < hitCooldown) {
+        return false;
+    }
+    
+    // Get the cell size and platform size for grid calculations
     const cellSize = getCellSize();
     const platformSize = getPlatformSize();
     
@@ -660,22 +926,14 @@ export function checkSpikeCollisions(playerPosition) {
     const playerGridX = Math.floor((playerPosition.x + platformSize) / cellSize);
     const playerGridZ = Math.floor((playerPosition.z + platformSize) / cellSize);
     
-    // Direct collision check with each spike
-    let hitSpike = false;
-    
-    // If player is on ground (y=0), check for spikes at their grid position
+    // Check collision only if player is on the ground (y near 0)
     if (playerPosition.y < 0.1) {
+        // Check each spike for collision
         for (let i = 0; i < spikes.length; i++) {
             const spike = spikes[i];
-            if (!spike.active) continue;
             
-            // For timed spikes, only check collision if currently activated
-            if (spike.isTimed) {
-                // Check if this specific spike is currently visible
-                if (!spike.mesh || !spike.mesh.visible) {
-                    continue;
-                }
-            }
+            // Skip inactive spikes
+            if (!spike.activated) continue;
             
             // Get spike grid coordinates
             const spikeGridZ = spike.cell.i;
@@ -683,14 +941,22 @@ export function checkSpikeCollisions(playerPosition) {
             
             // Check if player is in the same cell as this spike
             if (playerGridZ === spikeGridZ && playerGridX === spikeGridX) {
-                hitSpike = true;
+                // Damage player
                 damagePlayer(spike.damage);
-                break;
+                lastHitTime = Date.now();
+                
+                // Play sound effect
+                playSoundEffect('spike');
+                
+                // Flash screen
+                flashScreen();
+                
+                return true;
             }
         }
     }
     
-    return hitSpike;
+    return false;
 }
 
 // Damage player function

@@ -13,6 +13,7 @@ import { createHazards, checkSpikeCollisions, updateHazardStatus, cleanupHazards
 import { generateTexture } from './textureGenerator.js';
 import { initSounds, toggleSound, isSoundEnabled } from './sound.js';
 import { createSpearTraps, updateSpearTraps, cleanupSpearTraps } from './spearTrap.js';
+import { showMainMenu } from './menu.js';
 
 // Game state
 let scene, camera, renderer, cameraContainer, player;
@@ -71,6 +72,7 @@ export function initGame() {
     // Add sound toggle UI
     createSoundToggle();
     
+    
     // Reset level completion status
     levelCompleted = false;
     
@@ -109,6 +111,64 @@ function createSoundToggle() {
     });
     
     document.body.appendChild(soundToggle);
+}
+
+// Create a button to return to the main menu
+
+
+// Clean up the current game
+function cleanupGame() {
+    // Cancel animation frame
+    if (window.gameAnimationFrame) {
+        cancelAnimationFrame(window.gameAnimationFrame);
+    }
+    
+    // Remove the renderer from the DOM
+    if (renderer && renderer.domElement) {
+        document.body.removeChild(renderer.domElement);
+    }
+    
+    // Remove UI elements
+    const menuButton = document.getElementById('menuButton');
+    if (menuButton) menuButton.remove();
+    
+    const soundToggle = document.getElementById('soundToggle');
+    if (soundToggle) soundToggle.remove();
+    
+    const levelName = document.getElementById('levelName');
+    if (levelName) levelName.remove();
+    
+    const levelIndicatorElem = document.getElementById('levelIndicator');
+    if (levelIndicatorElem) levelIndicatorElem.remove();
+    
+    const nextLevelButton = document.getElementById('nextLevelButton');
+    if (nextLevelButton) nextLevelButton.remove();
+    
+    const resetButton = document.getElementById('resetButton');
+    if (resetButton) resetButton.remove();
+    
+    const levelCompleteMessage = document.getElementById('levelCompleteMessage');
+    if (levelCompleteMessage) levelCompleteMessage.remove();
+    
+    const gameCompleteMessage = document.getElementById('gameCompleteMessage');
+    if (gameCompleteMessage) gameCompleteMessage.remove();
+    
+    // Clear scene
+    while(scene.children.length > 0) { 
+        scene.remove(scene.children[0]); 
+    }
+    
+    // Reset game objects
+    gameObjects = {
+        walls: [],
+        coins: [],
+        platform: null,
+        lights: [],
+        obstacles: [],
+        hazards: null,
+        spearTraps: null,
+        finishLine: null
+    };
 }
 
 // Load a specific level
@@ -533,7 +593,7 @@ function checkFinishLineReached() {
 
 // Animation loop
 function animate() {
-    requestAnimationFrame(animate);
+    window.gameAnimationFrame = requestAnimationFrame(animate);
     
     // Calculate delta time
     const now = performance.now();
