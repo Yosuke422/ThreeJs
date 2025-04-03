@@ -6,7 +6,9 @@ export default defineConfig({
   base: './',
   publicDir: 'public',
   server: {
-    open: true
+    open: true,
+    port: 3000,
+    host: true
   },
   build: {
     outDir: 'dist',
