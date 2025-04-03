@@ -126,116 +126,97 @@
     <script type="importmap">
         {
             "imports": {
-                "three": "./lib/three.module.js",
-                "three/addons/": "./lib/jsm/"
+                "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/",
+                "three/examples/jsm/loaders/FBXLoader.js": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/loaders/FBXLoader.js",
+                "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
             }
         }
     </script>
     <script type="module">
-        import { initGame } from './js/game.js';
-        import { initSounds, toggleSound } from './js/sound.js';
+        import { ensureModulesAvailable } from './js/moduleHelper.js';
         
-        document.getElementById('startButton').addEventListener('click', () => {
-            document.getElementById('menuScreen').style.display = 'none';
-            document.getElementById('coinCountElement').style.display = 'block';
-            
-            initGame();
-            
-            // Show debug panel with Ctrl+D
-            window.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'd') {
-                    e.preventDefault();
-                    const panel = document.getElementById('debugPanel');
-                    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-                }
-            });
-            
-            // Setup sound test buttons
-            document.getElementById('testSoundCoin').addEventListener('click', () => {
-                if (window.playSound) window.playSound('coin');
-            });
-            
-            document.getElementById('testSoundJump').addEventListener('click', () => {
-                if (window.playSound) window.playSound('jump');
-            });
-            
-            document.getElementById('testSoundHurt').addEventListener('click', () => {
-                if (window.playSound) window.playSound('hurt');
-            });
-            
-            document.getElementById('testSoundComplete').addEventListener('click', () => {
-                if (window.playSound) window.playSound('levelComplete');
-            });
-        });
+        async function init() {
+            try {
+                await ensureModulesAvailable();
+                
+                const gameModule = await import('./js/game.js');
+                const soundModule = await import('./js/sound.js');
+                
+                window.initGame = gameModule.initGame;
+                window.initSounds = soundModule.initSounds;
+                window.toggleSound = soundModule.toggleSound;
+                
+                document.getElementById('startButton').addEventListener('click', () => {
+                    document.getElementById('menuScreen').style.display = 'none';
+                    document.getElementById('coinCountElement').style.display = 'block';
+                    
+                    window.initGame();
+                    
+                    window.addEventListener('keydown', (e) => {
+                        if (e.ctrlKey && e.key === 'd') {
+                            e.preventDefault();
+                            const panel = document.getElementById('debugPanel');
+                            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                        }
+                    });
+                    
+                    document.getElementById('testSoundCoin')?.addEventListener('click', () => {
+                        if (window.playSound) window.playSound('coin');
+                    });
+                    
+                    document.getElementById('testSoundJump')?.addEventListener('click', () => {
+                        if (window.playSound) window.playSound('jump');
+                    });
+                    
+                    document.getElementById('testSoundHurt')?.addEventListener('click', () => {
+                        if (window.playSound) window.playSound('hurt');
+                    });
+                    
+                    document.getElementById('testSoundComplete')?.addEventListener('click', () => {
+                        if (window.playSound) window.playSound('levelComplete');
+                    });
+                });
+            } catch (err) {
+                console.error('Failed to initialize the application:', err);
+                const errorMessage = document.createElement('div');
+                errorMessage.style.position = 'absolute';
+                errorMessage.style.top = '50%';
+                errorMessage.style.left = '50%';
+                errorMessage.style.transform = 'translate(-50%, -50%)';
+                errorMessage.style.padding = '20px';
+                errorMessage.style.backgroundColor = 'rgba(255, 0, 0, 0.8)';
+                errorMessage.style.color = 'white';
+                errorMessage.style.borderRadius = '10px';
+                errorMessage.style.fontFamily = 'Arial, sans-serif';
+                errorMessage.style.zIndex = '2000';
+                errorMessage.innerHTML = `
+                    <h2>Error Loading Game</h2>
+                    <p>There was a problem loading the game modules.</p>
+                    <p>Error: ${err.message}</p>
+                    <p>Please try refreshing the page or using a different browser.</p>
+                    <button id="retryButton" style="background: #4CAF50; color: white; border: none; padding: 10px 20px; margin-top: 15px; border-radius: 5px; cursor: pointer;">Retry Loading</button>
+                `;
+                document.body.appendChild(errorMessage);
+                
+                document.getElementById('retryButton').addEventListener('click', () => {
+                    location.reload();
+                });
+            }
+        }
+        
+        init();
         
         document.getElementById('controlsButton').addEventListener('click', () => {
             alert('Controls:\n\nW, A, S, D or Arrow Keys: Move\nSpace: Jump\nMouse: Look around\nEsc: Pause\n\nCollect all coins and reach the finish line!');
         });
-
-        // Add a special direct sound test function
-        document.addEventListener('DOMContentLoaded', function() {
-            const testButton = document.getElementById('testCoinSound');
-            if (testButton) {
-                testButton.addEventListener('click', function() {
-                    console.log("======== DIRECT COIN SOUND TEST ========");
-                    
-                    // Try multiple approaches in sequence
-                    
-                    // Approach 1: Direct file
-                    try {
-                        console.log("Testing direct file access");
-                        const sound = new Audio('sounds/coin-recieved-230517.mp3');
-                        sound.volume = 1.0;
-                        
-                        sound.oncanplaythrough = () => {
-                            console.log("File loaded successfully, playing...");
-                            sound.play()
-                                .then(() => console.log("Direct play successful!"))
-                                .catch(e => console.error("Direct play error:", e));
-                        };
-                        
-                        sound.onerror = (e) => {
-                            console.error("File loading error:", e);
-                            console.error("Error code:", sound.error ? sound.error.code : "unknown");
-                        };
-                        
-                        console.log("Forcing load...");
-                        sound.load();
-                        
-                        // Try immediate play as well
-                        sound.play()
-                            .then(() => console.log("Immediate play worked!"))
-                            .catch(e => console.log("Waiting for oncanplaythrough:", e));
-                    } catch (e) {
-                        console.error("Error creating Audio:", e);
-                    }
-                    
-                    // Approach 2: Use window.forceCoinSound if available
-                    setTimeout(() => {
-                        if (window.forceCoinSound) {
-                            console.log("Trying forceCoinSound method");
-                            try {
-                                window.forceCoinSound();
-                            } catch (e) {
-                                console.error("forceCoinSound failed:", e);
-                            }
-                        }
-                    }, 500);
-                    
-                    // Approach 3: Use playSound if available
-                    setTimeout(() => {
-                        if (window.playSound) {
-                            console.log("Trying playSound function");
-                            try {
-                                window.playSound('coin');
-                            } catch (e) {
-                                console.error("playSound failed:", e);
-                            }
-                        }
-                    }, 1000);
-                });
-            }
-        });
     </script>
+    
+    <div id="debugPanel">
+        <button id="testSoundCoin">Test Coin Sound</button>
+        <button id="testSoundJump">Test Jump Sound</button>
+        <button id="testSoundHurt">Test Hurt Sound</button>
+        <button id="testSoundComplete">Test Complete Sound</button>
+    </div>
 </body>
 </html> 
