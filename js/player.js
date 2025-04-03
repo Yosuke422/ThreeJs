@@ -1,13 +1,13 @@
 import * as THREE from "three";
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import {
-    getCurrentLevel,
-    getPlatformSize,
-    gravity,
-    jumpVelocity,
-    playerHeight,
-    playerRadius,
-    playerSpeed,
+  getCurrentLevel,
+  getPlatformSize,
+  gravity,
+  jumpVelocity,
+  playerHeight,
+  playerRadius,
+  playerSpeed,
 } from "./config.js";
 import { getLevelTheme } from "./level.js";
 
@@ -43,24 +43,70 @@ let runningAnimation = null;
 let idleAnimation = null;
 let jumpingAnimation = null;
 
+let player, cameraContainer, camera;
+let moveForward = false;
+let moveBackward = false;
+let moveLeft = false;
+let moveRight = false;
+let canJump = true;
+
+let isFalling = false;
+let isHurt = false;
+let velocityY = 0;
+let playerHealth = 100;
+
+let cameraMode = "firstPerson";
+
+let animationsLoaded = {
+  idle: false,
+  running: false,
+  jumping: false,
+};
+
 export function createPlayer(scene) {
   hasMovementOccurred = false;
 
-  const cameraContainer = new THREE.Object3D();
+  const playerContainer = new THREE.Object3D();
+  scene.add(playerContainer);
+
+  const playerGeometry = new THREE.CylinderGeometry(
+    playerRadius,
+    playerRadius,
+    playerHeight,
+    32
+  );
+  const playerMaterial = new THREE.MeshStandardMaterial({
+    color: 0x0000ff,
+    roughness: 0.7,
+    metalness: 0.3,
+    transparent: true,
+    opacity: 0.0,
+  });
+  player = new THREE.Mesh(playerGeometry, playerMaterial);
+  player.position.y = playerHeight / 2;
+  player.castShadow = false;
+  player.receiveShadow = false;
+  player.visible = false;
+
+  playerContainer.add(player);
+
+  window.playerContainer = playerContainer;
+
+  cameraContainer = new THREE.Object3D();
+  cameraContainer.position.set(0, playerHeight - 0.2, 0);
   scene.add(cameraContainer);
 
-  const camera = new THREE.PerspectiveCamera(
-    65,
+  camera = new THREE.PerspectiveCamera(
+    75,
     window.innerWidth / window.innerHeight,
     0.1,
-    25
+    1000
   );
-  camera.position.set(0, playerHeight * 0.3, 0);
-  cameraContainer.add(camera);
 
-  const playerContainer = new THREE.Object3D();
-  playerContainer.visible = false;
-  scene.add(playerContainer);
+  camera.position.set(0, 0, 0);
+  camera.rotation.set(0, 0, 0);
+
+  cameraContainer.add(camera);
 
   const fbxLoader = new FBXLoader();
   console.log("Loading Remy model...");
@@ -71,19 +117,185 @@ export function createPlayer(scene) {
       console.log("Remy model loaded successfully");
 
       const scale = playerHeight / 10;
-      fbx.scale.set(scale * 0.01, scale * 0.01, scale * 0.01);
+      fbx.scale.set(scale * 0.03, scale * 0.03, scale * 0.03);
+
+      fbx.position.y = 0.5;
 
       remyMixer = new THREE.AnimationMixer(fbx);
+
+      player.visible = false;
 
       playerContainer.add(fbx);
       remyModel = fbx;
 
-      fbxLoader.load("assets/Running.fbx", (runFbx) => {
-        console.log("Running animation loaded");
-        runningAnimation = remyMixer.clipAction(runFbx.animations[0]);
-        runningAnimation.play();
-        runningAnimation.enabled = false;
-      });
+      remyModel.visible = false;
+
+      console.log("Setting up animation system for Remy");
+
+      remyMixer = new THREE.AnimationMixer(fbx);
+
+      let totalAnimationsLoaded = 0;
+      const totalAnimations = 3;
+
+      const checkAllAnimationsLoaded = () => {
+        totalAnimationsLoaded++;
+        console.log(
+          `Animation ${totalAnimationsLoaded}/${totalAnimations} loaded`
+        );
+
+        if (totalAnimationsLoaded === totalAnimations) {
+          console.log("All animations loaded, applying idle animation");
+
+          if (idleAnimation) {
+            if (runningAnimation) {
+              runningAnimation.stop();
+              runningAnimation.enabled = false;
+            }
+            if (jumpingAnimation) {
+              jumpingAnimation.stop();
+              jumpingAnimation.enabled = false;
+            }
+
+            idleAnimation.reset();
+            idleAnimation.enabled = true;
+            idleAnimation.play();
+
+            for (let i = 0; i < 10; i++) {
+              remyMixer.update(0.01);
+            }
+
+            console.log("Initial idle animation applied");
+          }
+        }
+      };
+
+      fbxLoader.load(
+        "assets/Breathing_Idle.fbx",
+        (idleFbx) => {
+          console.log("Breathing idle animation loaded");
+
+          try {
+            if (idleFbx.animations && idleFbx.animations.length > 0) {
+              const idleClip = idleFbx.animations[0];
+
+              idleAnimation = remyMixer.clipAction(idleClip);
+              idleAnimation.setEffectiveTimeScale(1.0);
+              idleAnimation.setEffectiveWeight(1.0);
+              idleAnimation.clampWhenFinished = true;
+              idleAnimation.setLoop(THREE.LoopRepeat, Infinity);
+
+              console.log("Idle animation created", idleClip);
+              animationsLoaded.idle = true;
+
+              checkAllAnimationsLoaded();
+            } else {
+              console.error("No animations found in the idle FBX file");
+              animationsLoaded.idle = false;
+              checkAllAnimationsLoaded();
+            }
+          } catch (error) {
+            console.error("Error setting up idle animation:", error);
+            animationsLoaded.idle = false;
+            checkAllAnimationsLoaded();
+          }
+        },
+        (xhr) => {
+          console.log(
+            `Idle animation ${(xhr.loaded / xhr.total) * 100}% loaded`
+          );
+        },
+        (error) => {
+          console.error("Error loading idle animation:", error);
+          animationsLoaded.idle = false;
+          checkAllAnimationsLoaded();
+        }
+      );
+
+      fbxLoader.load(
+        "assets/Running.fbx",
+        (runFbx) => {
+          console.log("Running animation loaded");
+
+          try {
+            if (runFbx.animations && runFbx.animations.length > 0) {
+              const runClip = runFbx.animations[0];
+
+              runningAnimation = remyMixer.clipAction(runClip);
+              runningAnimation.setEffectiveTimeScale(1.0);
+              runningAnimation.setEffectiveWeight(1.0);
+              runningAnimation.clampWhenFinished = true;
+              runningAnimation.setLoop(THREE.LoopRepeat, Infinity);
+              runningAnimation.enabled = false;
+
+              console.log("Running animation created", runClip);
+              animationsLoaded.running = true;
+
+              checkAllAnimationsLoaded();
+            } else {
+              console.error("No animations found in the running FBX file");
+              animationsLoaded.running = false;
+              checkAllAnimationsLoaded();
+            }
+          } catch (error) {
+            console.error("Error setting up running animation:", error);
+            animationsLoaded.running = false;
+            checkAllAnimationsLoaded();
+          }
+        },
+        (xhr) => {
+          console.log(
+            `Running animation ${(xhr.loaded / xhr.total) * 100}% loaded`
+          );
+        },
+        (error) => {
+          console.error("Error loading running animation:", error);
+          animationsLoaded.running = false;
+          checkAllAnimationsLoaded();
+        }
+      );
+
+      fbxLoader.load(
+        "assets/Jumping_Up.fbx",
+        (jumpFbx) => {
+          console.log("Jumping animation loaded");
+
+          try {
+            if (jumpFbx.animations && jumpFbx.animations.length > 0) {
+              const jumpClip = jumpFbx.animations[0];
+
+              jumpingAnimation = remyMixer.clipAction(jumpClip);
+              jumpingAnimation.setEffectiveTimeScale(1.0);
+              jumpingAnimation.setEffectiveWeight(1.0);
+              jumpingAnimation.clampWhenFinished = true;
+              jumpingAnimation.setLoop(THREE.LoopOnce, 1);
+              jumpingAnimation.enabled = false;
+
+              console.log("Jumping animation created", jumpClip);
+              animationsLoaded.jumping = true;
+
+              checkAllAnimationsLoaded();
+            } else {
+              console.error("No animations found in the jumping FBX file");
+              animationsLoaded.jumping = false;
+              checkAllAnimationsLoaded();
+            }
+          } catch (error) {
+            console.error("Error setting up jumping animation:", error);
+            animationsLoaded.jumping = false;
+            checkAllAnimationsLoaded();
+          }
+        },
+        (xhr) => {
+          console.log(
+            `Jumping animation ${(xhr.loaded / xhr.total) * 100}% loaded`
+          );
+        },
+        (error) => {
+          console.error("Error loading jumping animation:", error);
+          animationsLoaded.jumping = false;
+          checkAllAnimationsLoaded();
+        }
+      );
     },
     (xhr) => {
       console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
@@ -91,25 +303,27 @@ export function createPlayer(scene) {
     (error) => {
       console.error("Error loading Remy model:", error);
 
-      const playerGeometry = new THREE.CapsuleGeometry(
+      const fallbackGeometry = new THREE.CapsuleGeometry(
         playerRadius,
         playerHeight - playerRadius * 2,
         1,
         8
       );
-      const playerMaterial = new THREE.MeshBasicMaterial({
+      const fallbackMaterial = new THREE.MeshBasicMaterial({
         color: 0xff0000,
         wireframe: true,
       });
-      const player = new THREE.Mesh(playerGeometry, playerMaterial);
-      player.position.y = playerHeight / 2;
-      playerContainer.add(player);
+      const fallbackModel = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
+      fallbackModel.position.y = playerHeight / 2;
+      playerContainer.add(fallbackModel);
+
+      player.visible = true;
     }
   );
 
-  playerContainer.position.y = playerHeight / 2;
+  playerContainer.position.y = 0;
 
-  return { cameraContainer, camera, player: playerContainer };
+  return { player: playerContainer, cameraContainer, camera };
 }
 
 export function setupControls(cameraContainer, camera) {
@@ -242,11 +456,31 @@ export function updatePlayer(
       playerSpeed;
   }
 
+  const playerPosBeforeJump = cameraContainer.position.clone();
+
   if (keys.Space && isOnGround) {
     velocity.y = jumpVelocity;
     isOnGround = false;
     isJumping = true;
     jumpHeight = 0;
+
+    if (remyMixer && jumpingAnimation && animationsLoaded.jumping) {
+      console.log("Playing jump animation");
+
+      if (idleAnimation && idleAnimation.enabled) {
+        idleAnimation.fadeOut(0.1);
+        idleAnimation.enabled = false;
+      }
+      if (runningAnimation && runningAnimation.enabled) {
+        runningAnimation.fadeOut(0.1);
+        runningAnimation.enabled = false;
+      }
+
+      jumpingAnimation.reset();
+      jumpingAnimation.enabled = true;
+      jumpingAnimation.fadeIn(0.1);
+      jumpingAnimation.play();
+    }
 
     if (window.playSound) {
       window.playSound("jump");
@@ -303,22 +537,22 @@ export function updatePlayer(
     velocity.y = 0;
     isOnGround = true;
     isJumping = false;
-
-    if (jumpHeight > 0.1 && window.playSound) {
-      window.playSound("land");
-    }
   } else {
     if (velocity.y !== 0) {
       isOnGround = false;
     }
   }
 
-  player.position.copy(cameraContainer.position);
-  player.position.y -= adjustedPlayerHeight / 2;
+  const playerObj = window.playerContainer || player;
 
-  if ((velocity.x !== 0 || velocity.z !== 0) && remyModel) {
+  playerObj.position.x = cameraContainer.position.x;
+  playerObj.position.z = cameraContainer.position.z;
+
+  playerObj.position.y = 0;
+
+  if (velocity.x !== 0 || velocity.z !== 0) {
     const angle = Math.atan2(velocity.x, velocity.z);
-    player.rotation.y = angle;
+    playerObj.rotation.y = angle;
   }
 
   if (remyMixer) {
@@ -326,15 +560,70 @@ export function updatePlayer(
 
     const isMoving = Math.abs(velocity.x) > 0.01 || Math.abs(velocity.z) > 0.01;
 
-    if (runningAnimation) {
-      if (isMoving && isOnGround) {
-        if (!runningAnimation.isRunning()) {
-          runningAnimation.play();
+    if (isJumping) {
+      if (
+        jumpingAnimation &&
+        !jumpingAnimation.enabled &&
+        animationsLoaded.jumping
+      ) {
+        console.log("Ensuring jump animation plays");
+        jumpingAnimation.reset();
+        jumpingAnimation.enabled = true;
+        jumpingAnimation.play();
+
+        if (idleAnimation) idleAnimation.enabled = false;
+        if (runningAnimation) runningAnimation.enabled = false;
+      }
+
+      if (isOnGround) {
+        isJumping = false;
+        if (jumpingAnimation) {
+          jumpingAnimation.fadeOut(0.1);
+          jumpingAnimation.enabled = false;
+
+          if (isMoving && runningAnimation) {
+            runningAnimation.reset();
+            runningAnimation.fadeIn(0.1);
+            runningAnimation.enabled = true;
+            runningAnimation.play();
+          } else if (idleAnimation) {
+            idleAnimation.reset();
+            idleAnimation.fadeIn(0.1);
+            idleAnimation.enabled = true;
+            idleAnimation.play();
+          }
+        }
+      }
+    } else {
+      if (isMoving) {
+        if (runningAnimation && !runningAnimation.enabled) {
+          console.log("Switching to running animation");
+
+          if (idleAnimation && idleAnimation.enabled) {
+            idleAnimation.fadeOut(0.2);
+            idleAnimation.enabled = false;
+          }
+
+          runningAnimation.reset();
+          runningAnimation.fadeIn(0.2);
           runningAnimation.enabled = true;
+          runningAnimation.play();
         }
       } else {
-        if (runningAnimation.isRunning()) {
-          runningAnimation.enabled = false;
+        if (idleAnimation && !idleAnimation.enabled) {
+          console.log("Switching to idle animation");
+
+          if (runningAnimation && runningAnimation.enabled) {
+            runningAnimation.fadeOut(0.2);
+            runningAnimation.enabled = false;
+          }
+
+          idleAnimation.reset();
+          idleAnimation.fadeIn(0.2);
+          idleAnimation.enabled = true;
+          idleAnimation.play();
+
+          remyMixer.update(0);
         }
       }
     }
@@ -646,3 +935,4 @@ export function getPlayerState() {
     jumpHeight,
   };
 }
+

@@ -45,58 +45,14 @@ function getBumpMap(textureName) {
 }
 
 export function createMaze(scene, theme) {
-  const wallColor = theme ? theme.wallColor : 0x8b4513;
   const mazeLayout = getMazeLayout();
   const wallWidth = getWallWidth();
   const wallDepth = getWallDepth();
   const cellSize = getCellSize();
   const platformSize = getPlatformSize();
-
   const wallHeight = theme && theme.wallHeight ? theme.wallHeight : 2.5;
-  const wallRoughness =
-    theme && theme.wallRoughness !== undefined ? theme.wallRoughness : 0.7;
-  const wallMetalness =
-    theme && theme.wallMetalness !== undefined ? theme.wallMetalness : 0.1;
-  const wallEmissive =
-    theme && theme.wallEmissive ? theme.wallEmissive : 0x000000;
-  const wallBevelSize =
-    theme && theme.wallBevelSize !== undefined ? theme.wallBevelSize : 0;
-  const wallPattern =
-    theme && theme.wallPattern ? theme.wallPattern : "default";
-  const wallToppers =
-    theme && theme.wallToppers !== undefined ? theme.wallToppers : false;
 
   wallCollisionBoxes = [];
-
-  const wallMaterial = new THREE.MeshStandardMaterial({
-    color: wallColor,
-    roughness: wallRoughness,
-    metalness: wallMetalness,
-    emissive: wallEmissive,
-    emissiveIntensity: wallEmissive === 0x000000 ? 0 : 0.5,
-  });
-
-  if (theme && theme.wallTexture) {
-    try {
-      const texture = getTexture(theme.wallTexture);
-      wallMaterial.map = texture;
-
-      wallMaterial.map.repeat.set(1, wallHeight / 2);
-    } catch (e) {
-      console.warn(`Failed to generate texture: ${theme.wallTexture}`, e);
-    }
-  }
-
-  let wallGeometry;
-  if (wallBevelSize > 0) {
-    wallGeometry = new THREE.BoxGeometry(wallWidth, wallHeight, wallDepth);
-
-    if (!(wallGeometry instanceof THREE.BufferGeometry)) {
-      wallGeometry = new THREE.BufferGeometry().fromGeometry(wallGeometry);
-    }
-  } else {
-    wallGeometry = new THREE.BoxGeometry(wallWidth, wallHeight, wallDepth);
-  }
 
   const maze = new THREE.Group();
   scene.add(maze);
@@ -104,35 +60,22 @@ export function createMaze(scene, theme) {
   for (let i = 0; i < mazeLayout.length; i++) {
     for (let j = 0; j < mazeLayout[i].length; j++) {
       if (mazeLayout[i][j] === 1) {
-        const thisWallGeometry = wallGeometry.clone();
-
-        const thisWallMaterial = wallMaterial.clone();
-
-        if (wallPattern === "cracked" || wallPattern === "weathered") {
-          const variation = Math.random() * 0.2 - 0.1;
-          thisWallMaterial.color.offsetHSL(0, 0, variation);
-        }
-
-        const wall = new THREE.Mesh(thisWallGeometry, thisWallMaterial);
-
-        wall.position.set(
-          -platformSize + j * cellSize + cellSize / 2,
-          wallHeight / 2,
-          -platformSize + i * cellSize + cellSize / 2
+        const wallX = -platformSize + j * cellSize + cellSize / 2;
+        const wallZ = -platformSize + i * cellSize + cellSize / 2;
+        
+        // Use the enhanced createWall function
+        const wall = createWall(
+          scene, 
+          wallX, 
+          wallZ, 
+          wallWidth, 
+          wallDepth, 
+          wallHeight, 
+          theme
         );
-
-        if (wallPattern === "panel") {
-          addPanelsToWall(wall, wallWidth, wallHeight, wallDepth, wallColor);
-        } else if (wallPattern === "grid") {
-          addGridToWall(wall, wallWidth, wallHeight, wallDepth, wallEmissive);
-        }
-
-        if (wallToppers) {
-          addWallToppers(wall, wallWidth, wallHeight, wallDepth, theme);
-        }
-
-        wall.castShadow = true;
-        wall.receiveShadow = true;
+        
+        // Remove from scene as we'll add it to the maze group
+        scene.remove(wall);
         maze.add(wall);
 
         const collisionMargin = 0.05;
@@ -307,51 +250,78 @@ function addAlienToppers(wall, width, height, depth) {
 
 export function createPlatform(scene, theme) {
   const platformSize = getPlatformSize();
-
-  const platformColor = theme ? theme.platformColor : 0x607d8b;
-  const platformTexture =
-    theme && theme.platformTexture ? theme.platformTexture : null;
-  const platformRoughness =
-    theme && theme.platformRoughness !== undefined
-      ? theme.platformRoughness
-      : 0.8;
-  const platformMetalness =
-    theme && theme.platformMetalness !== undefined
-      ? theme.platformMetalness
-      : 0.1;
-
-  const platformGeometry = new THREE.BoxGeometry(
-    platformSize * 2,
-    0.5,
-    platformSize * 2
+  const floorTexture = new THREE.CanvasTexture(
+    theme && theme.name 
+      ? generateTexture(getThemeTexture(theme.name), 1024)
+      : generateTexture("marble", 1024)
   );
+  
+  floorTexture.wrapS = THREE.RepeatWrapping;
+  floorTexture.wrapT = THREE.RepeatWrapping;
+  floorTexture.repeat.set(6, 6);
 
-  const platformMaterial = new THREE.MeshStandardMaterial({
-    color: platformColor,
-    roughness: platformRoughness,
-    metalness: platformMetalness,
+  const floorMaterial = new THREE.MeshStandardMaterial({
+    map: floorTexture,
+    roughness: 0.6,
+    metalness: 0.2,
+    bumpMap: floorTexture,
+    bumpScale: 0.05
   });
 
-  if (platformTexture) {
-    try {
-      const texture = getTexture(platformTexture);
-      platformMaterial.map = texture;
-
-      platformMaterial.map.repeat.set(platformSize / 2, platformSize / 2);
-    } catch (e) {
-      console.warn(
-        `Failed to generate platform texture: ${platformTexture}`,
-        e
-      );
+  const floorGeometry = new THREE.BoxGeometry(
+    platformSize * 2, 
+    1, 
+    platformSize * 2
+  );
+  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+  floor.position.set(0, -0.5, 0);
+  floor.receiveShadow = true;
+  
+  // Add decorative floor pattern
+  if (theme) {
+    // Add grid pattern or other floor details
+    const gridSize = 5;
+    const lineWidth = 0.05;
+    const lineColor = theme.gridColor || 0x333333;
+    const lineOpacity = theme.gridOpacity || 0.3;
+    
+    const gridMaterial = new THREE.MeshBasicMaterial({
+      color: lineColor,
+      transparent: true,
+      opacity: lineOpacity
+    });
+    
+    for (let x = -platformSize; x <= platformSize; x += gridSize) {
+      const lineGeometry = new THREE.BoxGeometry(lineWidth, 0.01, platformSize * 2);
+      const line = new THREE.Mesh(lineGeometry, gridMaterial);
+      line.position.set(x, 0.001, 0);
+      floor.add(line);
+    }
+    
+    for (let z = -platformSize; z <= platformSize; z += gridSize) {
+      const lineGeometry = new THREE.BoxGeometry(platformSize * 2, 0.01, lineWidth);
+      const line = new THREE.Mesh(lineGeometry, gridMaterial);
+      line.position.set(0, 0.001, z);
+      floor.add(line);
     }
   }
+  
+  scene.add(floor);
+  return floor;
+}
 
-  const platform = new THREE.Mesh(platformGeometry, platformMaterial);
-  platform.position.y = -0.25;
-  platform.receiveShadow = true;
-  scene.add(platform);
-
-  return platform;
+function getThemeTexture(themeName) {
+  switch (themeName) {
+    case "Forest": return "wood";
+    case "Desert": return "sand";
+    case "Cave": return "stone";
+    case "Ice": return "ice";
+    case "Volcano": return "lava";
+    case "Alien": return "alien";
+    case "Neon": return "neon";
+    case "Ocean": return "coral";
+    default: return "marble";
+  }
 }
 
 export function createStartFinish(scene) {
@@ -545,4 +515,249 @@ export function findValidCoinPositions() {
   }
 
   return validPositions;
+}
+
+export function createWall(scene, x, z, width, depth, height, theme) {
+  let wallTexture;
+  let wallMaterial;
+  
+  const hasTheme = theme && theme.name;
+  
+  // Create a more realistic wall based on theme
+  if (hasTheme) {
+    switch (theme.name) {
+      case "Forest":
+        wallTexture = new THREE.CanvasTexture(generateTexture("wood", 512));
+        wallTexture.wrapS = THREE.RepeatWrapping;
+        wallTexture.wrapT = THREE.RepeatWrapping;
+        wallTexture.repeat.set(width/2, height/2);
+        
+        wallMaterial = new THREE.MeshStandardMaterial({
+          map: wallTexture,
+          roughness: 0.8,
+          metalness: 0.2,
+          bumpMap: wallTexture,
+          bumpScale: 0.05,
+          envMapIntensity: 0.5
+        });
+        break;
+        
+      case "Desert":
+        wallTexture = new THREE.CanvasTexture(generateTexture("sand", 512));
+        wallTexture.wrapS = THREE.RepeatWrapping;
+        wallTexture.wrapT = THREE.RepeatWrapping;
+        wallTexture.repeat.set(width, height);
+        
+        wallMaterial = new THREE.MeshStandardMaterial({
+          map: wallTexture,
+          roughness: 0.9,
+          metalness: 0.1,
+          bumpMap: wallTexture,
+          bumpScale: 0.03
+        });
+        break;
+        
+      case "Cave":
+        wallTexture = new THREE.CanvasTexture(generateTexture("stone", 512));
+        wallTexture.wrapS = THREE.RepeatWrapping;
+        wallTexture.wrapT = THREE.RepeatWrapping;
+        wallTexture.repeat.set(width/2, height/2);
+        
+        wallMaterial = new THREE.MeshStandardMaterial({
+          map: wallTexture,
+          roughness: 0.9,
+          metalness: 0.2,
+          bumpMap: wallTexture,
+          bumpScale: 0.1,
+          aoMapIntensity: 0.8
+        });
+        break;
+        
+      case "Ice":
+        wallTexture = new THREE.CanvasTexture(generateTexture("ice", 512));
+        wallTexture.wrapS = THREE.RepeatWrapping;
+        wallTexture.wrapT = THREE.RepeatWrapping;
+        wallTexture.repeat.set(width/1.5, height/1.5);
+        
+        wallMaterial = new THREE.MeshPhysicalMaterial({
+          map: wallTexture,
+          roughness: 0.1,
+          metalness: 0.2,
+          transmission: 0.4,
+          thickness: 0.5,
+          clearcoat: 0.8,
+          clearcoatRoughness: 0.2,
+          envMapIntensity: 1.0
+        });
+        break;
+        
+      case "Volcano":
+        wallTexture = new THREE.CanvasTexture(generateTexture("lava", 512));
+        wallTexture.wrapS = THREE.RepeatWrapping;
+        wallTexture.wrapT = THREE.RepeatWrapping;
+        wallTexture.repeat.set(width/1.5, height/1.5);
+        
+        wallMaterial = new THREE.MeshStandardMaterial({
+          map: wallTexture,
+          roughness: 0.8,
+          metalness: 0.5,
+          emissive: new THREE.Color(0xff5500),
+          emissiveIntensity: 0.2,
+          bumpMap: wallTexture,
+          bumpScale: 0.08
+        });
+        break;
+        
+      case "Alien":
+        wallTexture = new THREE.CanvasTexture(generateTexture("alien", 512));
+        wallTexture.wrapS = THREE.RepeatWrapping;
+        wallTexture.wrapT = THREE.RepeatWrapping;
+        wallTexture.repeat.set(width/2, height/2);
+        
+        wallMaterial = new THREE.MeshStandardMaterial({
+          map: wallTexture,
+          roughness: 0.5,
+          metalness: 0.8,
+          emissive: new THREE.Color(0x00ff77),
+          emissiveIntensity: 0.1,
+          bumpMap: wallTexture,
+          bumpScale: 0.05
+        });
+        break;
+        
+      case "Neon":
+        wallTexture = new THREE.CanvasTexture(generateTexture("neon", 512));
+        wallTexture.wrapS = THREE.RepeatWrapping;
+        wallTexture.wrapT = THREE.RepeatWrapping;
+        wallTexture.repeat.set(width/1.5, height/1.5);
+        
+        wallMaterial = new THREE.MeshStandardMaterial({
+          map: wallTexture,
+          roughness: 0.3,
+          metalness: 0.7,
+          emissive: new THREE.Color(0x00ffff),
+          emissiveIntensity: 0.2,
+          envMapIntensity: 1.0
+        });
+        break;
+        
+      case "Ocean":
+        wallTexture = new THREE.CanvasTexture(generateTexture("coral", 512));
+        wallTexture.wrapS = THREE.RepeatWrapping;
+        wallTexture.wrapT = THREE.RepeatWrapping;
+        wallTexture.repeat.set(width/1.5, height/1.5);
+        
+        wallMaterial = new THREE.MeshStandardMaterial({
+          map: wallTexture,
+          roughness: 0.7,
+          metalness: 0.3,
+          bumpMap: wallTexture,
+          bumpScale: 0.07
+        });
+        break;
+        
+      default:
+        // Use modernUI for a sleek default style
+        wallTexture = new THREE.CanvasTexture(generateTexture("modernUI", 512));
+        wallTexture.wrapS = THREE.RepeatWrapping;
+        wallTexture.wrapT = THREE.RepeatWrapping;
+        wallTexture.repeat.set(width/2, height/2);
+        
+        wallMaterial = new THREE.MeshStandardMaterial({
+          map: wallTexture,
+          roughness: 0.3,
+          metalness: 0.7,
+          envMapIntensity: 0.8
+        });
+    }
+  } else {
+    wallTexture = new THREE.CanvasTexture(generateTexture("modernUI", 512));
+    wallTexture.wrapS = THREE.RepeatWrapping;
+    wallTexture.wrapT = THREE.RepeatWrapping;
+    wallTexture.repeat.set(width/2, height/2);
+    
+    wallMaterial = new THREE.MeshStandardMaterial({
+      map: wallTexture,
+      roughness: 0.3,
+      metalness: 0.7,
+      envMapIntensity: 0.8
+    });
+  }
+
+  // Create the wall geometry with beveled edges for a more modern look
+  const wallGeometry = new THREE.BoxGeometry(width, height, depth);
+  const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+  
+  wall.position.set(x, height / 2, z);
+  wall.castShadow = true;
+  wall.receiveShadow = true;
+  
+  // Add wall details based on theme
+  if (hasTheme) {
+    // Add edge highlights/trim to walls
+    const edgeWidth = 0.1;
+    const edgeGeometry = new THREE.BoxGeometry(
+      width + 0.02, 
+      height, 
+      depth + 0.02
+    );
+    
+    let edgeMaterial;
+    
+    switch (theme.name) {
+      case "Neon":
+        edgeMaterial = new THREE.MeshStandardMaterial({
+          color: 0x00ffff,
+          emissive: 0x00ffff,
+          emissiveIntensity: 0.5,
+          roughness: 0.3,
+          metalness: 0.8
+        });
+        break;
+      case "Alien":
+        edgeMaterial = new THREE.MeshStandardMaterial({
+          color: 0x00ff77,
+          emissive: 0x00ff77,
+          emissiveIntensity: 0.3,
+          roughness: 0.4,
+          metalness: 0.7
+        });
+        break;
+      case "Ice":
+        edgeMaterial = new THREE.MeshStandardMaterial({
+          color: 0x88ccff,
+          emissive: 0x88ccff,
+          emissiveIntensity: 0.2,
+          roughness: 0.1,
+          metalness: 0.9,
+          transparent: true,
+          opacity: 0.7
+        });
+        break;
+      case "Volcano":
+        edgeMaterial = new THREE.MeshStandardMaterial({
+          color: 0xff3300,
+          emissive: 0xff3300,
+          emissiveIntensity: 0.4,
+          roughness: 0.7,
+          metalness: 0.5
+        });
+        break;
+      default:
+        // Default edge material - subtle metal trim
+        edgeMaterial = new THREE.MeshStandardMaterial({
+          color: theme.trimColor || 0x333333,
+          roughness: 0.5,
+          metalness: 0.8
+        });
+    }
+    
+    // Create edge/trim mesh
+    const edges = new THREE.Mesh(edgeGeometry, edgeMaterial);
+    edges.scale.set(1.02, 0.98, 1.02); // Slightly larger on x/z, slightly smaller on y
+    wall.add(edges);
+  }
+
+  scene.add(wall);
+  return wall;
 }

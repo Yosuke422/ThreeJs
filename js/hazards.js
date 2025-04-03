@@ -19,21 +19,21 @@ let spikesActivated = true;
 let lastSpikeToggleTime = 0;
 
 export function createHazards(scene, theme) {
-  const level = getCurrentLevel();
-  const baseHealth = 100;
+    const level = getCurrentLevel();
+    const baseHealth = 100;
   playerHealth = Math.max(50, baseHealth - level * 5);
-  hazardsActive = true;
-  spikesActivated = true;
-  lastSpikeToggleTime = 0;
-
-  spikesGroup = new THREE.Group();
-  scene.add(spikesGroup);
-
-  createHealthBar();
-
-  generateSpikeTraps(scene, theme);
-
-  return { spikesGroup };
+    hazardsActive = true;
+    spikesActivated = true;
+    lastSpikeToggleTime = 0;
+    
+    spikesGroup = new THREE.Group();
+    scene.add(spikesGroup);
+    
+    createHealthBar();
+    
+    generateSpikeTraps(scene, theme);
+    
+    return { spikesGroup };
 }
 
 function createHealthBar() {
@@ -72,32 +72,32 @@ function createHealthBar() {
   healthText.style.fontSize = "12px";
   healthText.style.fontWeight = "bold";
   healthText.style.textShadow = "1px 1px 2px black";
-  healthText.textContent = `Health: ${playerHealth}%`;
-
-  container.appendChild(healthBar);
-  container.appendChild(healthText);
-  document.body.appendChild(container);
-
-  updateHealthBar();
+    healthText.textContent = `Health: ${playerHealth}%`;
+    
+    container.appendChild(healthBar);
+    container.appendChild(healthText);
+    document.body.appendChild(container);
+    
+    updateHealthBar();
 }
 
 function updateHealthBar() {
-  if (!healthBar) return;
-
-  healthBar.style.width = `${playerHealth}%`;
-
-  if (playerHealth > 60) {
+    if (!healthBar) return;
+    
+    healthBar.style.width = `${playerHealth}%`;
+    
+    if (playerHealth > 60) {
     healthBar.style.backgroundColor = "#00cc00";
-  } else if (playerHealth > 30) {
+    } else if (playerHealth > 30) {
     healthBar.style.backgroundColor = "#ffcc00";
-  } else {
+    } else {
     healthBar.style.backgroundColor = "#cc0000";
-  }
-
+    }
+    
   const healthText = document.getElementById("healthText");
-  if (healthText) {
-    healthText.textContent = `Health: ${playerHealth}%`;
-  }
+    if (healthText) {
+        healthText.textContent = `Health: ${playerHealth}%`;
+    }
 }
 
 function isInNarrowCorridor(i, j, mazeLayout) {
@@ -126,26 +126,26 @@ function isInNarrowCorridor(i, j, mazeLayout) {
 }
 
 function generateSpikeTraps(scene, theme) {
-  const mazeLayout = getMazeLayout();
-  const cellSize = getCellSize();
-  const platformSize = getPlatformSize();
-  const currentLevel = getCurrentLevel();
-
-  spikes.length = 0;
-
-  while (spikesGroup.children.length) {
-    spikesGroup.remove(spikesGroup.children[0]);
-  }
-
-  const spikeColor = theme && theme.wallColor ? theme.wallColor : 0x777777;
-  const spikeMetalness = 0.8;
-  const spikeRoughness = 0.2;
-
-  const spikeMaterial = new THREE.MeshStandardMaterial({
-    color: spikeColor,
-    metalness: spikeMetalness,
-    roughness: spikeRoughness,
-    emissive: new THREE.Color(0x330000),
+    const mazeLayout = getMazeLayout();
+    const cellSize = getCellSize();
+    const platformSize = getPlatformSize();
+    const currentLevel = getCurrentLevel();
+    
+    spikes.length = 0;
+    
+    while (spikesGroup.children.length) {
+        spikesGroup.remove(spikesGroup.children[0]);
+    }
+    
+    const spikeColor = theme && theme.wallColor ? theme.wallColor : 0x777777;
+    const spikeMetalness = 0.8;
+    const spikeRoughness = 0.2;
+    
+    const spikeMaterial = new THREE.MeshStandardMaterial({
+        color: spikeColor,
+        metalness: spikeMetalness,
+        roughness: spikeRoughness,
+        emissive: new THREE.Color(0x330000),
     emissiveIntensity: 0.2,
   });
 
@@ -157,39 +157,39 @@ function generateSpikeTraps(scene, theme) {
     emissiveIntensity: 0.8,
   });
 
-  const validCells = [];
-
-  for (let i = 0; i < mazeLayout.length; i++) {
-    for (let j = 0; j < mazeLayout[i].length; j++) {
-      if (mazeLayout[i][j] === 0) {
+    const validCells = [];
+    
+    for (let i = 0; i < mazeLayout.length; i++) {
+        for (let j = 0; j < mazeLayout[i].length; j++) {
+            if (mazeLayout[i][j] === 0) {
         if (
           (i === 0 && j === 0) ||
           (i === 1 && j === 0) ||
           (i === 0 && j === 1) ||
-          (i === mazeLayout.length - 1 && j === mazeLayout[0].length - 1) ||
+                    (i === mazeLayout.length - 1 && j === mazeLayout[0].length - 1) ||
           (i === mazeLayout.length - 2 && j === mazeLayout[0].length - 1) ||
           (i === mazeLayout.length - 1 && j === mazeLayout[0].length - 2) ||
           isInNarrowCorridor(i, j, mazeLayout)
         ) {
-          continue;
+                    continue;
+                }
+                
+                validCells.push({ i, j });
+            }
         }
-
-        validCells.push({ i, j });
-      }
     }
-  }
-
-  const shuffledCells = validCells.sort(() => Math.random() - 0.5);
-
+    
+    const shuffledCells = validCells.sort(() => Math.random() - 0.5);
+    
   const baseSpikePercentage = 0.1;
   const spikePercentage = Math.min(
     0.25,
     baseSpikePercentage + currentLevel * 0.015
   );
-  const numSpikeCells = Math.ceil(shuffledCells.length * spikePercentage);
-
-  const cellsWithSpikes = new Set();
-
+    const numSpikeCells = Math.ceil(shuffledCells.length * spikePercentage);
+    
+    const cellsWithSpikes = new Set();
+    
   function wouldCreateTooManyConsecutiveSpikes(row, col) {
     let consecutiveLeft = 0;
     for (let j = 1; j <= 2; j++) {
@@ -271,9 +271,9 @@ function generateSpikeTraps(scene, theme) {
     const cell = shuffledCells[cellIndex];
 
     if (cellsWithSpikes.has(`${cell.i},${cell.j}`)) {
-      continue;
-    }
-
+            continue;
+        }
+        
     if (wouldCreateTooManyConsecutiveSpikes(cell.i, cell.j)) {
       continue;
     }
@@ -430,71 +430,71 @@ function generateSpikeTraps(scene, theme) {
 }
 
 function createFullCellSpikes(material, cellSize, level) {
-  const group = new THREE.Group();
-
-  group.userData = {
-    originalColor: null,
-    spikeMaterial: null,
+    const group = new THREE.Group();
+    
+    group.userData = {
+        originalColor: null,
+        spikeMaterial: null,
     baseMaterial: null,
-  };
-
-  if (!material) {
-    material = new THREE.MeshStandardMaterial({
-      color: 0x777777,
-      metalness: 0.8,
+    };
+    
+    if (!material) {
+        material = new THREE.MeshStandardMaterial({
+            color: 0x777777,
+            metalness: 0.8,
       roughness: 0.2,
-    });
-  }
-
+        });
+    }
+    
   const spikeHeight = level < 4 ? 0.3 : 0.3 + level * 0.03;
-  const spikeBaseRadius = 0.05;
+    const spikeBaseRadius = 0.05;
   const coverage = 0.8;
-
-  const glowMaterial = new THREE.MeshBasicMaterial({
-    color: 0xff0000,
-    transparent: true,
-    opacity: 0.3,
+    
+    const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        transparent: true,
+        opacity: 0.3,
     side: THREE.DoubleSide,
-  });
-
-  const glowRing = new THREE.Mesh(
-    new THREE.RingGeometry(cellSize * 0.3, cellSize * 0.4, 16),
-    glowMaterial
-  );
+    });
+    
+    const glowRing = new THREE.Mesh(
+        new THREE.RingGeometry(cellSize * 0.3, cellSize * 0.4, 16),
+        glowMaterial
+    );
   glowRing.rotation.x = -Math.PI / 2;
-  glowRing.position.y = 0.01;
-  group.add(glowRing);
-
-  group.userData.glowRing = glowRing;
-
+    glowRing.position.y = 0.01;
+    group.add(glowRing);
+    
+    group.userData.glowRing = glowRing;
+    
   const gridSize = 5;
-  const spacing = (cellSize * coverage) / gridSize;
-
-  const spikeMaterial = new THREE.MeshStandardMaterial({
-    color: material.color ? material.color : 0x777777,
-    metalness: material.metalness !== undefined ? material.metalness : 0.8,
-    roughness: material.roughness !== undefined ? material.roughness : 0.2,
-    emissive: new THREE.Color(0x330000),
+    const spacing = (cellSize * coverage) / gridSize;
+    
+    const spikeMaterial = new THREE.MeshStandardMaterial({
+        color: material.color ? material.color : 0x777777,
+        metalness: material.metalness !== undefined ? material.metalness : 0.8,
+        roughness: material.roughness !== undefined ? material.roughness : 0.2,
+        emissive: new THREE.Color(0x330000),
     emissiveIntensity: 0.2,
-  });
-
-  group.userData.spikeMaterial = spikeMaterial;
-
-  if (spikeMaterial && spikeMaterial.color) {
+    });
+    
+    group.userData.spikeMaterial = spikeMaterial;
+    
+    if (spikeMaterial && spikeMaterial.color) {
     group.userData.originalColor = new THREE.Color(
       spikeMaterial.color.getHex()
     );
-  } else {
-    group.userData.originalColor = new THREE.Color(0x777777);
-  }
-
-  const spikePieces = new THREE.Group();
-  group.add(spikePieces);
-
-  group.userData.spikePieces = spikePieces;
-
-  for (let i = 0; i < gridSize; i++) {
-    for (let j = 0; j < gridSize; j++) {
+    } else {
+        group.userData.originalColor = new THREE.Color(0x777777);
+    }
+    
+    const spikePieces = new THREE.Group();
+    group.add(spikePieces);
+    
+    group.userData.spikePieces = spikePieces;
+    
+    for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
       const xPos = (i - (gridSize - 1) / 2) * spacing;
       const zPos = (j - (gridSize - 1) / 2) * spacing;
 
@@ -503,31 +503,31 @@ function createFullCellSpikes(material, cellSize, level) {
         spikeHeight,
         4
       );
-      const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
-
+            const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
+            
       spike.position.set(xPos, spikeHeight / 2, zPos);
-
-      spike.rotation.x = Math.PI;
-
-      spike.rotation.z = Math.random() * 0.3;
-
-      spikePieces.add(spike);
+            
+            spike.rotation.x = Math.PI;
+            
+            spike.rotation.z = Math.random() * 0.3;
+            
+            spikePieces.add(spike);
+        }
     }
-  }
-
-  const baseSize = cellSize * 0.9;
-
-  const baseGeometry = new THREE.BoxGeometry(baseSize, 0.05, baseSize);
-
-  let baseMaterial;
-  if (level >= 6) {
+    
+    const baseSize = cellSize * 0.9;
+    
+    const baseGeometry = new THREE.BoxGeometry(baseSize, 0.05, baseSize);
+    
+    let baseMaterial;
+    if (level >= 6) {
     const baseColor =
       material && material.color
         ? new THREE.Color(material.color).offsetHSL(0, 0, -0.1)
         : new THREE.Color(0x666666);
-
-    baseMaterial = new THREE.MeshStandardMaterial({
-      color: baseColor,
+            
+        baseMaterial = new THREE.MeshStandardMaterial({
+            color: baseColor,
       metalness:
         material && material.metalness !== undefined
           ? material.metalness + 0.1
@@ -536,12 +536,12 @@ function createFullCellSpikes(material, cellSize, level) {
         material && material.roughness !== undefined
           ? material.roughness - 0.1
           : 0.1,
-      emissive: new THREE.Color(0x330000),
+            emissive: new THREE.Color(0x330000),
       emissiveIntensity: 0.3,
-    });
-  } else {
-    baseMaterial = new THREE.MeshStandardMaterial({
-      color: material && material.color ? material.color : 0x777777,
+        });
+    } else {
+        baseMaterial = new THREE.MeshStandardMaterial({
+            color: material && material.color ? material.color : 0x777777,
       metalness:
         material && material.metalness !== undefined ? material.metalness : 0.8,
       roughness:
@@ -549,121 +549,117 @@ function createFullCellSpikes(material, cellSize, level) {
     });
   }
 
-  const base = new THREE.Mesh(baseGeometry, baseMaterial);
-  base.position.y = -0.01;
-  group.add(base);
-
-  group.userData.baseMaterial = baseMaterial;
-
-  return group;
+    const base = new THREE.Mesh(baseGeometry, baseMaterial);
+    base.position.y = -0.01;
+    group.add(base);
+    
+    group.userData.baseMaterial = baseMaterial;
+    
+    return group;
 }
 
 export function updateSpikes(deltaTime) {
-  if (!hazardsActive || !spikes || spikes.length === 0) return;
-
-  const currentTime = Date.now();
-
-  const level = getCurrentLevel();
+    if (!hazardsActive || !spikes || spikes.length === 0) return;
+    
+    const currentTime = Date.now();
+    
+    const level = getCurrentLevel();
   const toggleInterval = Math.max(800, 2500 - level * 200);
-
-  if (currentTime - lastSpikeToggleTime > toggleInterval) {
-    spikesActivated = !spikesActivated;
-    lastSpikeToggleTime = currentTime;
-
-    if (typeof playSoundEffect === "function") {
-      playSoundEffect("spikeToggle");
+    
+    if (currentTime - lastSpikeToggleTime > toggleInterval) {
+        spikesActivated = !spikesActivated;
+        lastSpikeToggleTime = currentTime;
     }
-  }
-
+    
   animateJumpSprites(currentTime);
 
-  for (let i = 0; i < spikes.length; i++) {
-    const spike = spikes[i];
-
+    for (let i = 0; i < spikes.length; i++) {
+        const spike = spikes[i];
+        
     if (!spike || !spike.activated || !spike.mesh) continue;
-
-    const mesh = spike.mesh;
-    if (!mesh) continue;
-
-    if (!mesh.visible) {
-      mesh.visible = true;
-    }
-
-    if (!mesh.userData) {
-      mesh.userData = {};
-    }
-
-    const spikePieces = mesh.userData.spikePieces || mesh;
-    const glowRing = mesh.userData.glowRing;
-    const spikeMaterial = mesh.userData.spikeMaterial;
+        
+        const mesh = spike.mesh;
+        if (!mesh) continue;
+        
+        if (!mesh.visible) {
+            mesh.visible = true;
+        }
+        
+        if (!mesh.userData) {
+            mesh.userData = {};
+        }
+        
+        const spikePieces = mesh.userData.spikePieces || mesh;
+        const glowRing = mesh.userData.glowRing;
+        const spikeMaterial = mesh.userData.spikeMaterial;
     const originalColor =
       mesh.userData.originalColor ||
       (spikeMaterial && spikeMaterial.color
         ? new THREE.Color(spikeMaterial.color.getHex())
         : new THREE.Color(0x777777));
 
-    if (spike.isTimed) {
+        if (spike.isTimed) {
       const adjustedTime =
         (currentTime + (spike.timingOffset || 0)) % (toggleInterval * 2);
-      const thisSpikeActivated = adjustedTime < toggleInterval;
-
-      try {
-        if (thisSpikeActivated) {
-          if (!mesh.visible) {
-            mesh.visible = true;
-
-            if (spikePieces && spikePieces.position) {
+            const thisSpikeActivated = adjustedTime < toggleInterval;
+            
+            try {
+                if (thisSpikeActivated) {
+                    if (!mesh.visible) {
+                        mesh.visible = true;
+                        
+                        if (spikePieces && spikePieces.position) {
               spikePieces.position.y = -0.3;
-            }
-
-            spike.animatingUp = true;
-            spike.animationStartTime = currentTime;
+                        }
+                        
+                        spike.animatingUp = true;
+                        spike.animationStartTime = currentTime;
             spike.animationDuration = 150;
-
-            if (glowRing && glowRing.material) {
-              glowRing.material.opacity = 0;
-              if (glowRing.scale) {
-                glowRing.scale.set(0.5, 0.5, 0.5);
-              }
-            }
-
-            if (spikeMaterial && spikeMaterial.emissive) {
-              spikeMaterial.emissive.setRGB(0.3, 0, 0);
-            }
-          }
-
-          if (spike.animatingUp && spikePieces && spikePieces.position) {
-            const elapsed = currentTime - spike.animationStartTime;
-            const progress = Math.min(1.0, elapsed / spike.animationDuration);
-
-            const easeOut = 1 - Math.pow(1 - progress, 2);
+                        
+                        if (glowRing && glowRing.material) {
+                            glowRing.material.opacity = 0;
+                            if (glowRing.scale) {
+                                glowRing.scale.set(0.5, 0.5, 0.5);
+                            }
+                        }
+                        
+                        if (spikeMaterial && spikeMaterial.emissive) {
+                            spikeMaterial.emissive.setRGB(0.3, 0, 0);
+                        }
+                    }
+                    
+                    if (spike.animatingUp && spikePieces && spikePieces.position) {
+                        const elapsed = currentTime - spike.animationStartTime;
+                        const progress = Math.min(1.0, elapsed / spike.animationDuration);
+                        
+                        const easeOut = 1 - Math.pow(1 - progress, 2);
             spikePieces.position.y = -0.3 + easeOut * 0.31;
-
-            if (glowRing && glowRing.material && glowRing.scale) {
-              glowRing.material.opacity = easeOut * 0.4;
-              glowRing.scale.set(0.5 + easeOut * 0.5, 0.5 + easeOut * 0.5, 1);
-
+                        
+                        if (glowRing && glowRing.material && glowRing.scale) {
+                            glowRing.material.opacity = easeOut * 0.4;
+                            glowRing.scale.set(0.5 + easeOut * 0.5, 0.5 + easeOut * 0.5, 1);
+                            
               glowRing.material.opacity *=
                 0.7 + Math.sin(currentTime * 0.01) * 0.3;
-            }
-
-            if (spikeMaterial) {
-              if (spikeMaterial.emissiveIntensity !== undefined) {
-                spikeMaterial.emissiveIntensity = 0.1 + easeOut * 0.3;
-              }
-
-              if (spikeMaterial.color && originalColor) {
-                const pulseAmt = Math.sin(currentTime * 0.01) * 0.1 + 0.1;
-                spikeMaterial.color.copy(originalColor);
-                spikeMaterial.color.offsetHSL(0, 0, pulseAmt);
-              }
-            }
-
-            if (progress >= 1.0) {
-              spike.animatingUp = false;
-            }
-          }
-        } else {
+                        }
+                        
+                        if (spikeMaterial) {
+                            if (spikeMaterial.emissiveIntensity !== undefined) {
+                                spikeMaterial.emissiveIntensity = 0.1 + easeOut * 0.3;
+                            }
+                            
+                            if (spikeMaterial.color && originalColor) {
+                                const pulseAmt = Math.sin(currentTime * 0.01) * 0.1 + 0.1;
+                                spikeMaterial.color.copy(originalColor);
+                                spikeMaterial.color.offsetHSL(0, 0, pulseAmt);
+                            }
+                        }
+                        
+                        if (progress >= 1.0) {
+                            spike.animatingUp = false;
+                        }
+                    }
+                } else {
           if (
             mesh.visible &&
             !spike.animatingDown &&
@@ -671,51 +667,51 @@ export function updateSpikes(deltaTime) {
             spikePieces.position
           ) {
             spikePieces.position.y = 0.01;
-            spike.animatingDown = true;
-            spike.animationStartTime = currentTime;
+                        spike.animatingDown = true;
+                        spike.animationStartTime = currentTime;
             spike.animationDuration = 150;
-          }
-
-          if (spike.animatingDown && spikePieces && spikePieces.position) {
-            const elapsed = currentTime - spike.animationStartTime;
-            const progress = Math.min(1.0, elapsed / spike.animationDuration);
-
-            const easeIn = Math.pow(progress, 2);
+                    }
+                    
+                    if (spike.animatingDown && spikePieces && spikePieces.position) {
+                        const elapsed = currentTime - spike.animationStartTime;
+                        const progress = Math.min(1.0, elapsed / spike.animationDuration);
+                        
+                        const easeIn = Math.pow(progress, 2);
             spikePieces.position.y = 0.01 - easeIn * 0.31;
-
-            if (glowRing && glowRing.material && glowRing.scale) {
-              glowRing.material.opacity = 0.4 * (1 - easeIn);
-              glowRing.scale.set(1 - easeIn * 0.5, 1 - easeIn * 0.5, 1);
-            }
-
+                        
+                        if (glowRing && glowRing.material && glowRing.scale) {
+                            glowRing.material.opacity = 0.4 * (1 - easeIn);
+                            glowRing.scale.set(1 - easeIn * 0.5, 1 - easeIn * 0.5, 1);
+                        }
+                        
             if (
               spikeMaterial &&
               spikeMaterial.emissiveIntensity !== undefined
             ) {
-              spikeMaterial.emissiveIntensity = 0.4 * (1 - easeIn);
+                            spikeMaterial.emissiveIntensity = 0.4 * (1 - easeIn);
+                        }
+                        
+                        if (progress >= 1.0) {
+                            spike.animatingDown = false;
+                            mesh.visible = false;
+                        }
+                    }
+                }
+            } catch (e) {
+                if (thisSpikeActivated) {
+                    mesh.visible = true;
+                    if (spikePieces && spikePieces.position) {
+                        spikePieces.position.y = 0.01;
+                    }
+                } else {
+                    mesh.visible = false;
+                }
             }
-
-            if (progress >= 1.0) {
-              spike.animatingDown = false;
-              mesh.visible = false;
-            }
-          }
         }
-      } catch (e) {
-        if (thisSpikeActivated) {
-          mesh.visible = true;
-          if (spikePieces && spikePieces.position) {
-            spikePieces.position.y = 0.01;
-          }
-        } else {
-          mesh.visible = false;
-        }
-      }
-    }
-
-    if (spike.isMoving) {
-      try {
-        const baseY = spike.originalY || 0.01;
+        
+        if (spike.isMoving) {
+            try {
+                const baseY = spike.originalY || 0.01;
         const amplitude = 0.4;
         const newY =
           baseY +
@@ -724,36 +720,36 @@ export function updateSpikes(deltaTime) {
           ) *
             amplitude;
 
-        if (spikePieces && spikePieces.position) {
-          spikePieces.position.y = newY;
-        } else if (mesh.position) {
-          mesh.position.y = newY;
-        }
-
-        if (spikeMaterial && spikeMaterial.emissiveIntensity !== undefined) {
+                if (spikePieces && spikePieces.position) {
+                    spikePieces.position.y = newY;
+                } else if (mesh.position) {
+                    mesh.position.y = newY;
+                }
+                
+                if (spikeMaterial && spikeMaterial.emissiveIntensity !== undefined) {
           const pulseAmt = Math.sin(currentTime * 0.004) * 0.15 + 0.15;
-          spikeMaterial.emissiveIntensity = 0.2 + pulseAmt;
-
-          if (originalColor && spikeMaterial.color) {
-            spikeMaterial.color.copy(originalColor);
-            spikeMaterial.color.offsetHSL(0, 0, pulseAmt * 0.2);
-          }
-        }
-
-        if (glowRing && glowRing.material && glowRing.scale) {
+                    spikeMaterial.emissiveIntensity = 0.2 + pulseAmt;
+                    
+                    if (originalColor && spikeMaterial.color) {
+                        spikeMaterial.color.copy(originalColor);
+                        spikeMaterial.color.offsetHSL(0, 0, pulseAmt * 0.2);
+                    }
+                }
+                
+                if (glowRing && glowRing.material && glowRing.scale) {
           glowRing.material.opacity =
             0.2 + Math.sin((spike.phase || 0) + currentTime * 0.003) * 0.1;
           const pulseScale =
             0.9 + Math.sin((spike.phase || 0) + currentTime * 0.005) * 0.1;
-          glowRing.scale.set(pulseScale, pulseScale, 1);
+                    glowRing.scale.set(pulseScale, pulseScale, 1);
+                }
+                
+                spike.phase = (spike.phase || 0) + deltaTime * (spike.speed || 1);
+            } catch (e) {
+                console.log("Error animating moving spike:", e);
+            }
         }
-
-        spike.phase = (spike.phase || 0) + deltaTime * (spike.speed || 1);
-      } catch (e) {
-        console.log("Error animating moving spike:", e);
-      }
     }
-  }
 }
 
 function animateJumpSprites(currentTime) {
@@ -804,58 +800,65 @@ export function checkSpikeCollisions(playerPosition) {
     return false;
   }
 
-  const cellSize = getCellSize();
-  const platformSize = getPlatformSize();
-
-  const playerGridX = Math.floor((playerPosition.x + platformSize) / cellSize);
-  const playerGridZ = Math.floor((playerPosition.z + platformSize) / cellSize);
-
-  if (playerPosition.y < 0.1) {
-    for (let i = 0; i < spikes.length; i++) {
-      const spike = spikes[i];
+    const cellSize = getCellSize();
+    const platformSize = getPlatformSize();
+    
+    const playerGridX = Math.floor((playerPosition.x + platformSize) / cellSize);
+    const playerGridZ = Math.floor((playerPosition.z + platformSize) / cellSize);
+    
+    if (playerPosition.y < 0.1) {
+        for (let i = 0; i < spikes.length; i++) {
+            const spike = spikes[i];
 
       if (!spike.activated) continue;
 
-      const spikeGridZ = spike.cell.i;
-      const spikeGridX = spike.cell.j;
-
-      if (playerGridZ === spikeGridZ && playerGridX === spikeGridX) {
-        damagePlayer(spike.damage);
-
-        if (typeof playSoundEffect === "function") {
-          playSoundEffect("spike");
-        }
+            const spikeGridZ = spike.cell.i;
+            const spikeGridX = spike.cell.j;
+            
+            if (playerGridZ === spikeGridZ && playerGridX === spikeGridX) {
+                damagePlayer(spike.damage);
 
         flashScreen();
 
         return true;
-      }
+            }
+        }
     }
-  }
-
+    
   return false;
 }
 
 export function damagePlayer(amount) {
-  if (Date.now() - lastHitTime < hitCooldown) return;
+    if (Date.now() - lastHitTime < hitCooldown) return;
+    
+    lastHitTime = Date.now();
+    
+  const previousHealth = playerHealth;
+    playerHealth = Math.max(0, playerHealth - amount);
 
-  lastHitTime = Date.now();
+  if (playerHealth < previousHealth) {
+    if (window.playSound) {
+      window.playSound("hurt");
 
-  playerHealth = Math.max(0, playerHealth - amount);
+      if (window.updateLastPlayerHealth) {
+        window.updateLastPlayerHealth(playerHealth);
+      }
+    }
+
+    flashScreen();
+  }
+    
   updateHealthBar();
 
-  playSoundEffect("hit");
-  flashScreen();
-
-  if (playerHealth <= 0) {
-    playerDied();
-  }
+    if (playerHealth <= 0) {
+        playerDied();
+    }
 }
 
 function playSoundEffect(effect) {
-  if (window.playSound) {
-    window.playSound(effect);
-  }
+    if (window.playSound) {
+        window.playSound(effect);
+    }
 }
 
 function flashScreen() {
@@ -869,22 +872,22 @@ function flashScreen() {
   flash.style.pointerEvents = "none";
   flash.style.zIndex = "999";
   flash.style.transition = "opacity 0.5s ease-out";
-
-  document.body.appendChild(flash);
-
-  setTimeout(() => {
-    flash.style.opacity = "0";
+    
+    document.body.appendChild(flash);
+    
     setTimeout(() => {
-      if (flash.parentNode) {
-        flash.parentNode.removeChild(flash);
-      }
-    }, 500);
-  }, 100);
+    flash.style.opacity = "0";
+        setTimeout(() => {
+            if (flash.parentNode) {
+                flash.parentNode.removeChild(flash);
+            }
+        }, 500);
+    }, 100);
 }
 
 function playerDied() {
-  hazardsActive = false;
-
+    hazardsActive = false;
+    
   const deathMessage = document.createElement("div");
   deathMessage.id = "deathMessage";
   deathMessage.style.position = "absolute";
@@ -901,72 +904,56 @@ function playerDied() {
   deathMessage.style.borderRadius = "10px";
   deathMessage.style.zIndex = "1000";
   deathMessage.innerHTML = "You died!<br>Restarting level...";
-  document.body.appendChild(deathMessage);
-
-  setTimeout(() => {
-    if (window.restartLevel) {
-      window.restartLevel();
-    } else {
-      location.reload();
-    }
-  }, 3000);
+    document.body.appendChild(deathMessage);
+    
+    setTimeout(() => {
+        if (window.restartLevel) {
+            window.restartLevel();
+        } else {
+            location.reload();
+        }
+    }, 3000);
 }
 
 export function updateHazardStatus() {
-  const { coinsCollected, numCoins } = getCollectionState();
-
-  if (coinsCollected >= numCoins) {
-    hazardsActive = false;
-
-    const successMessage = document.createElement("div");
-    successMessage.id = "safetyMessage";
-    successMessage.style.position = "absolute";
-    successMessage.style.top = "30%";
-    successMessage.style.left = "50%";
-    successMessage.style.transform = "translate(-50%, -50%)";
-    successMessage.style.color = "green";
-    successMessage.style.fontFamily = "Arial, sans-serif";
-    successMessage.style.fontSize = "24px";
-    successMessage.style.fontWeight = "bold";
-    successMessage.style.textShadow = "2px 2px 4px rgba(0, 0, 0, 0.5)";
-    successMessage.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-    successMessage.style.padding = "15px";
-    successMessage.style.borderRadius = "10px";
-    successMessage.style.zIndex = "999";
-    successMessage.style.opacity = "1";
-    successMessage.style.transition = "opacity 0.5s ease-out";
-    successMessage.innerHTML = "All coins collected!<br>The maze is now safe.";
-    document.body.appendChild(successMessage);
-
-    setTimeout(() => {
+    const { coinsCollected, numCoins } = getCollectionState();
+    
+    if (coinsCollected >= numCoins) {
+        hazardsActive = false;
+        
+    if (window.playSound && !document.getElementById("safetyMessage")) {
+      window.playSound("levelComplete");
+    }
+      
+        setTimeout(() => {
       successMessage.style.opacity = "0";
-      setTimeout(() => {
-        if (successMessage.parentNode) {
-          successMessage.parentNode.removeChild(successMessage);
-        }
-      }, 500);
-    }, 3000);
-  }
-
-  return hazardsActive;
+            setTimeout(() => {
+                if (successMessage.parentNode) {
+                    successMessage.parentNode.removeChild(successMessage);
+                }
+            }, 500);
+        }, 3000);
+    }
+    
+    return hazardsActive;
 }
 
 export function cleanupHazards() {
-  spikes.length = 0;
-
+    spikes.length = 0;
+    
   if (document.getElementById("healthBarContainer")) {
     document.getElementById("healthBarContainer").remove();
-  }
-
+    }
+    
   if (document.getElementById("deathMessage")) {
     document.getElementById("deathMessage").remove();
-  }
-
+    }
+    
   if (document.getElementById("safetyMessage")) {
     document.getElementById("safetyMessage").remove();
-  }
+    }
 }
 
 export function updateFallingObjects() {
-  return;
-}
+    return;
+} 

@@ -231,18 +231,37 @@ export function createLevelUI() {
   levelIndicator.id = "levelIndicator";
   levelIndicator.style.position = "absolute";
   levelIndicator.style.top = "20px";
-  levelIndicator.style.right = "20px";
+  levelIndicator.style.left = "20px";
   levelIndicator.style.color = "white";
   levelIndicator.style.fontFamily = "Arial, sans-serif";
-  levelIndicator.style.fontSize = "24px";
+  levelIndicator.style.fontSize = "18px";
   levelIndicator.style.fontWeight = "bold";
-  levelIndicator.style.textShadow = "2px 2px 4px rgba(0, 0, 0, 0.5)";
-  levelIndicator.innerHTML = `Level: ${getCurrentLevel() + 1} / ${
-    mazeLevels.length
-  }`;
+  levelIndicator.style.padding = "10px 15px";
+  levelIndicator.style.backgroundColor = "rgba(20, 30, 40, 0.75)";
+  levelIndicator.style.borderRadius = "10px";
+  levelIndicator.style.backdropFilter = "blur(5px)";
+  levelIndicator.style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.3)";
+  levelIndicator.style.zIndex = "1000";
+  levelIndicator.style.display = "flex";
+  levelIndicator.style.alignItems = "center";
+  levelIndicator.style.border = "1px solid rgba(255, 255, 255, 0.1)";
+  levelIndicator.style.textShadow = "1px 1px 2px rgba(0, 0, 0, 0.5)";
+  
+  // Add a small game icon
+  const gameIcon = document.createElement("span");
+  gameIcon.innerHTML = "🎮";
+  gameIcon.style.marginRight = "8px";
+  gameIcon.style.fontSize = "20px";
+  levelIndicator.appendChild(gameIcon);
+  
+  // Add level text
+  const levelText = document.createElement("span");
+  levelText.id = "levelText";
+  levelText.innerHTML = `Level: ${getCurrentLevel() + 1} / ${mazeLevels.length}`;
+  levelIndicator.appendChild(levelText);
+  
   document.body.appendChild(levelIndicator);
-
-  return levelIndicator;
+  return levelText;
 }
 
 export function createNextLevelButton(callback) {
@@ -259,73 +278,106 @@ export function createNextLevelButton(callback) {
   nextLevelButton.style.left = "50%";
   nextLevelButton.style.transform = "translateX(-50%)";
   nextLevelButton.style.padding = "15px 30px";
-  nextLevelButton.style.backgroundColor = "#4CAF50";
+  nextLevelButton.style.backgroundColor = "#4fc3f7";
   nextLevelButton.style.color = "white";
   nextLevelButton.style.border = "none";
-  nextLevelButton.style.borderRadius = "5px";
+  nextLevelButton.style.borderRadius = "50px";
   nextLevelButton.style.fontSize = "20px";
   nextLevelButton.style.fontWeight = "bold";
   nextLevelButton.style.cursor = "pointer";
-  nextLevelButton.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+  nextLevelButton.style.boxShadow = "0 4px 15px rgba(79, 195, 247, 0.4)";
   nextLevelButton.style.zIndex = "1000";
-  nextLevelButton.style.pointerEvents = "auto";
-
-  nextLevelButton.innerHTML = "Next Level ►";
-
-  let isLoading = false;
+  nextLevelButton.style.transition = "all 0.3s ease";
+  nextLevelButton.style.opacity = "0";
+  
+  // Add arrow icon
+  nextLevelButton.innerHTML = 'Next Level <span style="margin-left: 8px;">➡️</span>';
 
   nextLevelButton.onmouseenter = () => {
-    if (!isLoading) {
-      nextLevelButton.style.backgroundColor = "#45a049";
-      nextLevelButton.style.transform = "translateX(-50%) scale(1.05)";
-    }
+    nextLevelButton.style.backgroundColor = "#039be5";
+    nextLevelButton.style.transform = "translateX(-50%) scale(1.05)";
+    nextLevelButton.style.boxShadow = "0 6px 20px rgba(79, 195, 247, 0.6)";
   };
+  
   nextLevelButton.onmouseleave = () => {
-    if (!isLoading) {
-      nextLevelButton.style.backgroundColor = "#4CAF50";
-      nextLevelButton.style.transform = "translateX(-50%) scale(1)";
-    }
+    nextLevelButton.style.backgroundColor = "#4fc3f7";
+    nextLevelButton.style.transform = "translateX(-50%) scale(1)";
+    nextLevelButton.style.boxShadow = "0 4px 15px rgba(79, 195, 247, 0.4)";
   };
+
+  nextLevelButton.onmousedown = () => {
+    nextLevelButton.style.transform = "translateX(-50%) scale(0.95)";
+  };
+  
+  nextLevelButton.onmouseup = () => {
+    nextLevelButton.style.transform = "translateX(-50%) scale(1.05)";
+  };
+
+  document.body.appendChild(nextLevelButton);
+  
+  // Animate button appearance
+  setTimeout(() => {
+    nextLevelButton.style.opacity = "1";
+    nextLevelButton.focus();
+  }, 800);
 
   const handleButtonClick = (event) => {
     event.preventDefault();
     event.stopPropagation();
 
-    if (isLoading) return;
-    isLoading = true;
-
-    nextLevelButton.style.backgroundColor = "#999999";
-    nextLevelButton.innerHTML = "Loading...";
-    nextLevelButton.style.cursor = "wait";
-
-    console.log("Next level button clicked - loading next level");
-
-    setTimeout(() => {
-      if (nextLevelButton.parentNode) {
-        nextLevelButton.parentNode.removeChild(nextLevelButton);
+    nextLevelButton.disabled = true;
+    nextLevelButton.style.opacity = "0.7";
+    nextLevelButton.style.cursor = "not-allowed";
+    nextLevelButton.style.transform = "translateX(-50%) scale(0.95)";
+    
+    // Show loading indicator
+    const loadingIndicator = document.createElement("div");
+    loadingIndicator.id = "loadingIndicator";
+    loadingIndicator.style.position = "absolute";
+    loadingIndicator.style.top = "50%";
+    loadingIndicator.style.left = "50%";
+    loadingIndicator.style.transform = "translate(-50%, -50%)";
+    loadingIndicator.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+    loadingIndicator.style.color = "white";
+    loadingIndicator.style.padding = "15px 30px";
+    loadingIndicator.style.borderRadius = "10px";
+    loadingIndicator.style.fontFamily = "Arial, sans-serif";
+    loadingIndicator.style.fontSize = "24px";
+    loadingIndicator.style.zIndex = "1100";
+    loadingIndicator.style.display = "flex";
+    loadingIndicator.style.alignItems = "center";
+    loadingIndicator.style.justifyContent = "center";
+    loadingIndicator.style.gap = "15px";
+    loadingIndicator.style.minWidth = "200px";
+    
+    const spinner = document.createElement("div");
+    spinner.style.width = "24px";
+    spinner.style.height = "24px";
+    spinner.style.border = "3px solid rgba(255, 255, 255, 0.3)";
+    spinner.style.borderRadius = "50%";
+    spinner.style.borderTop = "3px solid white";
+    spinner.style.animation = "spin 1s linear infinite";
+    
+    const styleElement = document.createElement("style");
+    styleElement.textContent = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
+    `;
+    document.head.appendChild(styleElement);
+    
+    loadingIndicator.appendChild(spinner);
+    loadingIndicator.appendChild(document.createTextNode("Loading Next Level..."));
+    document.body.appendChild(loadingIndicator);
 
-      const levelCompleteMessage = document.getElementById(
-        "levelCompleteMessage"
-      );
-      if (levelCompleteMessage && levelCompleteMessage.parentNode) {
-        levelCompleteMessage.parentNode.removeChild(levelCompleteMessage);
-      }
-
-      if (typeof callback === "function") {
-        callback();
-      }
-    }, 10);
+    if (typeof callback === "function") {
+      callback();
+    }
   };
 
   nextLevelButton.addEventListener("click", handleButtonClick);
-  nextLevelButton.addEventListener("mousedown", handleButtonClick);
   nextLevelButton.addEventListener("touchstart", handleButtonClick);
-
-  document.body.appendChild(nextLevelButton);
-
-  nextLevelButton.tabIndex = 0;
-  nextLevelButton.focus();
 
   return nextLevelButton;
 }
@@ -344,25 +396,95 @@ export function createLevelCompleteMessage(level) {
   levelCompleteMessage.style.transform = "translate(-50%, -50%)";
   levelCompleteMessage.style.color = "white";
   levelCompleteMessage.style.fontFamily = "Arial, sans-serif";
-  levelCompleteMessage.style.fontSize = "48px";
+  levelCompleteMessage.style.fontSize = "36px";
   levelCompleteMessage.style.fontWeight = "bold";
   levelCompleteMessage.style.textShadow = "2px 2px 4px rgba(0, 0, 0, 0.5)";
-  levelCompleteMessage.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-  levelCompleteMessage.style.padding = "20px";
-  levelCompleteMessage.style.borderRadius = "10px";
+  levelCompleteMessage.style.backgroundColor = "rgba(20, 30, 40, 0.85)";
+  levelCompleteMessage.style.backdropFilter = "blur(10px)";
+  levelCompleteMessage.style.padding = "30px 40px";
+  levelCompleteMessage.style.borderRadius = "15px";
+  levelCompleteMessage.style.boxShadow = "0 10px 25px rgba(0, 0, 0, 0.5)";
   levelCompleteMessage.style.textAlign = "center";
   levelCompleteMessage.style.zIndex = "999";
-
+  levelCompleteMessage.style.border = "1px solid rgba(255, 255, 255, 0.1)";
+  levelCompleteMessage.style.opacity = "0";
+  levelCompleteMessage.style.transition = "opacity 0.5s, transform 0.5s";
+  
+  // Top decoration bar
+  const topDecoration = document.createElement("div");
+  topDecoration.style.position = "absolute";
+  topDecoration.style.top = "0";
+  topDecoration.style.left = "0";
+  topDecoration.style.width = "100%";
+  topDecoration.style.height = "5px";
+  topDecoration.style.background = "linear-gradient(90deg, #4fc3f7, #1de9b6)";
+  levelCompleteMessage.appendChild(topDecoration);
+  
+  // Bottom glow effect
+  const bottomGlow = document.createElement("div");
+  bottomGlow.style.position = "absolute";
+  bottomGlow.style.bottom = "-10px";
+  bottomGlow.style.left = "50%";
+  bottomGlow.style.transform = "translateX(-50%)";
+  bottomGlow.style.width = "80%";
+  bottomGlow.style.height = "15px";
+  bottomGlow.style.borderRadius = "50%";
+  bottomGlow.style.background = "rgba(29, 233, 182, 0.3)";
+  bottomGlow.style.filter = "blur(10px)";
+  levelCompleteMessage.appendChild(bottomGlow);
+  
+  // Content container
+  const contentContainer = document.createElement("div");
+  contentContainer.style.position = "relative";
+  contentContainer.style.zIndex = "1";
+  
+  // Success icon
+  const successIcon = document.createElement("div");
+  successIcon.innerHTML = "🎉";
+  successIcon.style.fontSize = "48px";
+  successIcon.style.marginBottom = "10px";
+  contentContainer.appendChild(successIcon);
+  
+  // Header text
+  const headerText = document.createElement("div");
+  headerText.style.fontSize = "42px";
+  headerText.style.color = "#1de9b6";
+  headerText.style.fontWeight = "bold";
+  headerText.style.marginBottom = "5px";
+  headerText.style.textTransform = "uppercase";
+  headerText.style.letterSpacing = "2px";
+  
   if (level === mazeLevels.length - 1) {
-    levelCompleteMessage.innerHTML =
-      "CONGRATULATIONS!<br>You completed all levels!";
+    headerText.innerText = "CONGRATULATIONS!";
   } else {
-    levelCompleteMessage.innerHTML = `LEVEL ${
-      level + 1
-    } COMPLETE!<br>All coins collected!`;
+    headerText.innerText = `LEVEL ${level + 1} COMPLETE!`;
   }
+  contentContainer.appendChild(headerText);
+  
+  // Subheader
+  const subheader = document.createElement("div");
+  subheader.style.fontSize = "24px";
+  subheader.style.marginBottom = "20px";
+  subheader.style.opacity = "0.85";
+  
+  if (level === mazeLevels.length - 1) {
+    subheader.innerText = "You completed all levels!";
+  } else {
+    subheader.innerText = "All coins collected!";
+  }
+  contentContainer.appendChild(subheader);
+  
+  // Add contentContainer to message
+  levelCompleteMessage.appendChild(contentContainer);
 
   document.body.appendChild(levelCompleteMessage);
+  
+  // Animation
+  setTimeout(() => {
+    levelCompleteMessage.style.opacity = "1";
+    levelCompleteMessage.style.transform = "translate(-50%, -50%) scale(1)";
+  }, 100);
+  
   return levelCompleteMessage;
 }
 
@@ -415,55 +537,136 @@ export function createGameCompleteMessage() {
   gameCompleteMessage.style.transform = "translate(-50%, -50%)";
   gameCompleteMessage.style.color = "white";
   gameCompleteMessage.style.fontFamily = "Arial, sans-serif";
-  gameCompleteMessage.style.fontSize = "48px";
+  gameCompleteMessage.style.fontSize = "36px";
   gameCompleteMessage.style.fontWeight = "bold";
   gameCompleteMessage.style.textShadow = "2px 2px 4px rgba(0, 0, 0, 0.5)";
-  gameCompleteMessage.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-  gameCompleteMessage.style.padding = "20px";
-  gameCompleteMessage.style.borderRadius = "10px";
+  gameCompleteMessage.style.backgroundColor = "rgba(20, 30, 40, 0.85)";
+  gameCompleteMessage.style.backdropFilter = "blur(10px)";
+  gameCompleteMessage.style.padding = "40px 50px";
+  gameCompleteMessage.style.borderRadius = "15px";
+  gameCompleteMessage.style.boxShadow = "0 10px 25px rgba(0, 0, 0, 0.5)";
   gameCompleteMessage.style.textAlign = "center";
   gameCompleteMessage.style.zIndex = "999";
-  gameCompleteMessage.innerHTML =
-    "CONGRATULATIONS!<br>You completed all levels!<br>You are a maze master!";
-
+  gameCompleteMessage.style.border = "1px solid rgba(255, 255, 255, 0.1)";
+  gameCompleteMessage.style.opacity = "0";
+  gameCompleteMessage.style.transition = "opacity 0.5s, transform 0.5s";
+  
+  // Decorative elements
+  const topDecoration = document.createElement("div");
+  topDecoration.style.position = "absolute";
+  topDecoration.style.top = "0";
+  topDecoration.style.left = "0";
+  topDecoration.style.width = "100%";
+  topDecoration.style.height = "5px";
+  topDecoration.style.background = "linear-gradient(90deg, #ffeb3b, #ff9800, #f44336)";
+  gameCompleteMessage.appendChild(topDecoration);
+  
+  const bottomGlow = document.createElement("div");
+  bottomGlow.style.position = "absolute";
+  bottomGlow.style.bottom = "-10px";
+  bottomGlow.style.left = "50%";
+  bottomGlow.style.transform = "translateX(-50%)";
+  bottomGlow.style.width = "80%";
+  bottomGlow.style.height = "15px";
+  bottomGlow.style.borderRadius = "50%";
+  bottomGlow.style.background = "rgba(255, 152, 0, 0.3)";
+  bottomGlow.style.filter = "blur(10px)";
+  gameCompleteMessage.appendChild(bottomGlow);
+  
+  // Content container
+  const contentContainer = document.createElement("div");
+  contentContainer.style.position = "relative";
+  contentContainer.style.zIndex = "1";
+  
+  // Trophy icon
+  const trophyIcon = document.createElement("div");
+  trophyIcon.innerHTML = "🏆";
+  trophyIcon.style.fontSize = "64px";
+  trophyIcon.style.marginBottom = "20px";
+  contentContainer.appendChild(trophyIcon);
+  
+  // Title
+  const titleText = document.createElement("div");
+  titleText.innerText = "CONGRATULATIONS!";
+  titleText.style.fontSize = "42px";
+  titleText.style.fontWeight = "bold";
+  titleText.style.color = "#ffeb3b";
+  titleText.style.marginBottom = "15px";
+  titleText.style.textTransform = "uppercase";
+  titleText.style.letterSpacing = "2px";
+  contentContainer.appendChild(titleText);
+  
+  // Subtitle
+  const subtitleText = document.createElement("div");
+  subtitleText.innerText = "You completed all levels!";
+  subtitleText.style.fontSize = "28px";
+  subtitleText.style.marginBottom = "15px";
+  subtitleText.style.opacity = "0.9";
+  contentContainer.appendChild(subtitleText);
+  
+  // Message
+  const message = document.createElement("div");
+  message.innerText = "You are a maze master!";
+  message.style.fontSize = "22px";
+  message.style.opacity = "0.8";
+  message.style.fontStyle = "italic";
+  contentContainer.appendChild(message);
+  
+  gameCompleteMessage.appendChild(contentContainer);
   document.body.appendChild(gameCompleteMessage);
-
+  
+  // Reset button with improved styling
   const resetButton = document.createElement("button");
   resetButton.id = "resetButton";
   resetButton.innerText = "Play Again";
   resetButton.style.position = "absolute";
-  resetButton.style.top = "calc(50% + 100px)";
+  resetButton.style.top = "calc(50% + 180px)";
   resetButton.style.left = "50%";
   resetButton.style.transform = "translateX(-50%)";
   resetButton.style.padding = "15px 30px";
-  resetButton.style.backgroundColor = "#4CAF50";
+  resetButton.style.backgroundColor = "#ff9800";
   resetButton.style.color = "white";
   resetButton.style.border = "none";
-  resetButton.style.borderRadius = "5px";
+  resetButton.style.borderRadius = "50px";
   resetButton.style.fontSize = "20px";
   resetButton.style.fontWeight = "bold";
   resetButton.style.cursor = "pointer";
-  resetButton.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
+  resetButton.style.boxShadow = "0 4px 15px rgba(255, 152, 0, 0.4)";
   resetButton.style.zIndex = "1000";
+  resetButton.style.transition = "all 0.3s ease";
+  resetButton.style.opacity = "0";
 
   resetButton.onmouseenter = () => {
-    resetButton.style.backgroundColor = "#45a049";
+    resetButton.style.backgroundColor = "#f57c00";
+    resetButton.style.transform = "translateX(-50%) scale(1.05)";
+    resetButton.style.boxShadow = "0 6px 20px rgba(255, 152, 0, 0.6)";
   };
+  
   resetButton.onmouseleave = () => {
-    resetButton.style.backgroundColor = "#4CAF50";
+    resetButton.style.backgroundColor = "#ff9800";
+    resetButton.style.transform = "translateX(-50%) scale(1)";
+    resetButton.style.boxShadow = "0 4px 15px rgba(255, 152, 0, 0.4)";
   };
 
   resetButton.onmousedown = () => {
     resetButton.style.transform = "translateX(-50%) scale(0.95)";
   };
+  
   resetButton.onmouseup = () => {
-    resetButton.style.transform = "translateX(-50%) scale(1)";
+    resetButton.style.transform = "translateX(-50%) scale(1.05)";
   };
 
   document.body.appendChild(resetButton);
 
+  // Animations
   setTimeout(() => {
-    resetButton.focus();
+    gameCompleteMessage.style.opacity = "1";
+    gameCompleteMessage.style.transform = "translate(-50%, -50%) scale(1)";
+    
+    setTimeout(() => {
+      resetButton.style.opacity = "1";
+      resetButton.focus();
+    }, 500);
   }, 100);
 
   return { gameCompleteMessage, resetButton };

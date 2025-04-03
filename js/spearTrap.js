@@ -284,14 +284,6 @@ function fireSpear(trap, scene, theme) {
       hasHit: false,
     });
 
-    if (window.playSound) {
-      try {
-        window.playSound("spearFire");
-      } catch (soundError) {
-        console.warn("Error playing spear fire sound:", soundError);
-      }
-    }
-
     if (trap.mesh) {
       try {
         let originalMaterial = null;

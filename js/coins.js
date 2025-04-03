@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { getNumCoins } from "./config.js";
+import { updateCoinCounter } from "./game.js";
 
 let coins = [];
 let coinsCollected = 0;
@@ -97,7 +98,6 @@ export function createCoins(scene, validCoinPositions) {
   coinCountElement.style.fontWeight = "bold";
   coinCountElement.style.textShadow = "2px 2px 4px rgba(0, 0, 0, 0.5)";
   coinCountElement.id = "coinCountElement";
-  coinCountElement.innerHTML = `Coins: 0 / ${numCoins}`;
   document.body.appendChild(coinCountElement);
 
   selectedPositions.forEach((pos, index) => {
@@ -124,6 +124,7 @@ export function createCoins(scene, validCoinPositions) {
       phaseOffset: index * (Math.PI / 3),
       rotationSpeed: 0.02 + Math.random() * 0.01,
       isCollected: false,
+      soundPlayed: false,
       position: pos,
       collectionRadius: 0.8,
     };
@@ -191,6 +192,51 @@ export function updateCoins(time, cameraContainer) {
 
         const coinPosition = coin.position.clone();
         createCollectionEffect(coinPosition);
+
+        if (window.forceCoinSound) {
+          coin.userData.soundPlayed = true;
+          console.log(
+            "Playing coin sound via forceCoinSound (now prioritizes MP3 file)"
+          );
+          window.forceCoinSound();
+        } else if (window.playSound) {
+          coin.userData.soundPlayed = true;
+          window.playSound("coin");
+        } else {
+          try {
+            console.log("Direct coin sound play on collection");
+            const sound = new Audio("sounds/coin-recieved-230517.mp3");
+            sound.volume = 1.0;
+            console.log(
+              "Playing direct MP3 file: sounds/coin-recieved-230517.mp3"
+            );
+
+            sound.addEventListener("canplaythrough", () => {
+              console.log("Coin MP3 loaded successfully, playing now");
+            });
+
+            sound.addEventListener("playing", () => {
+              console.log("Coin MP3 playback started");
+            });
+
+            sound.addEventListener("error", (e) => {
+              console.error("Coin MP3 error:", e);
+            });
+
+            const playPromise = sound.play();
+            if (playPromise) {
+              playPromise
+                .then(() =>
+                  console.log("Coin MP3 play promise resolved successfully")
+                )
+                .catch((e) => console.warn("Coin MP3 play failed:", e));
+            }
+
+            coin.userData.soundPlayed = true;
+          } catch (e) {
+            console.error("Error playing direct coin sound:", e);
+          }
+        }
       }
 
       if (horizontalDistance < nearestCoinDistance) {
@@ -199,6 +245,30 @@ export function updateCoins(time, cameraContainer) {
       }
     }
   });
+
+  if (nearestCoinDistance < 0.7) {
+    if (
+      typeof window.collectCoin === "function" &&
+      nearestCoin &&
+      !nearestCoin.userData.isCollected
+    ) {
+      window.collectCoin(nearestCoin);
+    } else if (nearestCoin && !nearestCoin.userData.isCollected) {
+      if (window.gameScene) {
+        window.gameScene.remove(nearestCoin);
+      }
+      coins.splice(coins.indexOf(nearestCoin), 1);
+      coinsCollected++;
+
+      let totalCoins = coins.length + coinsCollected;
+
+      if (!nearestCoin.userData.soundPlayed && window.playSound) {
+        window.playSound("coin");
+      }
+
+      updateCoinCounter();
+    }
+  }
 
   return { nearestCoin, nearestCoinDistance, coinsCollected };
 }

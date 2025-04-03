@@ -7,6 +7,7 @@
     <style>
         body {
             margin: 0;
+            padding: 0;
             overflow: hidden;
             background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
             background-size: 400% 400%;
@@ -24,18 +25,217 @@
                 background-position: 0% 50%;
             }
         }
+        
+        #menuScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+        }
+        
+        .title {
+            font-size: 48px;
+            margin-bottom: 50px;
+            text-shadow: 0 0 10px #0088ff, 0 0 20px #0088ff;
+        }
+        
+        .button {
+            padding: 15px 30px;
+            margin: 10px;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+        
+        .button:focus {
+            outline: none;
+        }
+        
+        #loadingIndicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1001;
+        }
+        
+        #coinCountElement {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: gold;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        #debugPanel {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            display: none;
+        }
+        
+        #debugPanel button {
+            margin: 5px;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 3px;
+            color: white;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+    <div id="menuScreen">
+        <div class="title">3D Maze Game</div>
+        <button id="startButton" class="button">Start Game</button>
+        <button id="controlsButton" class="button">Controls</button>
+    </div>
+    
+    <div id="coinCountElement" style="display: none;">Coins: 0/0</div>
+    
     <script type="importmap">
         {
             "imports": {
-                "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
-                "three/examples/jsm/controls/OrbitControls.js": "https://unpkg.com/three@0.157.0/examples/jsm/controls/OrbitControls.js",
-                "three/examples/jsm/loaders/FBXLoader.js": "https://unpkg.com/three@0.157.0/examples/jsm/loaders/FBXLoader.js"
+                "three": "./lib/three.module.js",
+                "three/addons/": "./lib/jsm/"
             }
         }
     </script>
-    <script type="module" src="js/main.js"></script>
+    <script type="module">
+        import { initGame } from './js/game.js';
+        import { initSounds, toggleSound } from './js/sound.js';
+        
+        document.getElementById('startButton').addEventListener('click', () => {
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('coinCountElement').style.display = 'block';
+            
+            initGame();
+            
+            // Show debug panel with Ctrl+D
+            window.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'd') {
+                    e.preventDefault();
+                    const panel = document.getElementById('debugPanel');
+                    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                }
+            });
+            
+            // Setup sound test buttons
+            document.getElementById('testSoundCoin').addEventListener('click', () => {
+                if (window.playSound) window.playSound('coin');
+            });
+            
+            document.getElementById('testSoundJump').addEventListener('click', () => {
+                if (window.playSound) window.playSound('jump');
+            });
+            
+            document.getElementById('testSoundHurt').addEventListener('click', () => {
+                if (window.playSound) window.playSound('hurt');
+            });
+            
+            document.getElementById('testSoundComplete').addEventListener('click', () => {
+                if (window.playSound) window.playSound('levelComplete');
+            });
+        });
+        
+        document.getElementById('controlsButton').addEventListener('click', () => {
+            alert('Controls:\n\nW, A, S, D or Arrow Keys: Move\nSpace: Jump\nMouse: Look around\nEsc: Pause\n\nCollect all coins and reach the finish line!');
+        });
+
+        // Add a special direct sound test function
+        document.addEventListener('DOMContentLoaded', function() {
+            const testButton = document.getElementById('testCoinSound');
+            if (testButton) {
+                testButton.addEventListener('click', function() {
+                    console.log("======== DIRECT COIN SOUND TEST ========");
+                    
+                    // Try multiple approaches in sequence
+                    
+                    // Approach 1: Direct file
+                    try {
+                        console.log("Testing direct file access");
+                        const sound = new Audio('sounds/coin-recieved-230517.mp3');
+                        sound.volume = 1.0;
+                        
+                        sound.oncanplaythrough = () => {
+                            console.log("File loaded successfully, playing...");
+                            sound.play()
+                                .then(() => console.log("Direct play successful!"))
+                                .catch(e => console.error("Direct play error:", e));
+                        };
+                        
+                        sound.onerror = (e) => {
+                            console.error("File loading error:", e);
+                            console.error("Error code:", sound.error ? sound.error.code : "unknown");
+                        };
+                        
+                        console.log("Forcing load...");
+                        sound.load();
+                        
+                        // Try immediate play as well
+                        sound.play()
+                            .then(() => console.log("Immediate play worked!"))
+                            .catch(e => console.log("Waiting for oncanplaythrough:", e));
+                    } catch (e) {
+                        console.error("Error creating Audio:", e);
+                    }
+                    
+                    // Approach 2: Use window.forceCoinSound if available
+                    setTimeout(() => {
+                        if (window.forceCoinSound) {
+                            console.log("Trying forceCoinSound method");
+                            try {
+                                window.forceCoinSound();
+                            } catch (e) {
+                                console.error("forceCoinSound failed:", e);
+                            }
+                        }
+                    }, 500);
+                    
+                    // Approach 3: Use playSound if available
+                    setTimeout(() => {
+                        if (window.playSound) {
+                            console.log("Trying playSound function");
+                            try {
+                                window.playSound('coin');
+                            } catch (e) {
+                                console.error("playSound failed:", e);
+                            }
+                        }
+                    }, 1000);
+                });
+            }
+        });
+    </script>
 </body>
 </html> 

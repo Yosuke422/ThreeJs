@@ -38,6 +38,12 @@ export function generateTexture(type, size = 512) {
     case "coral":
       generateCoralTexture(ctx, size);
       break;
+    case "modernUI":
+      generateModernUITexture(ctx, size);
+      break;
+    case "marble":
+      generateMarbleTexture(ctx, size);
+      break;
     default:
       generateDefaultTexture(ctx, size);
   }
@@ -46,21 +52,30 @@ export function generateTexture(type, size = 512) {
 }
 
 function generateWoodTexture(ctx, size) {
-  ctx.fillStyle = "#8B4513";
+  const gradient = ctx.createLinearGradient(0, 0, size, size);
+  gradient.addColorStop(0, "#8B4513");
+  gradient.addColorStop(0.2, "#A05A2C");
+  gradient.addColorStop(0.4, "#8B4513");
+  gradient.addColorStop(0.6, "#A05A2C");
+  gradient.addColorStop(0.8, "#8B4513");
+  gradient.addColorStop(1, "#A05A2C");
+  
+  ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, size, size);
 
-  for (let i = 0; i < size; i += 4) {
-    const grainWidth = Math.random() * 2 + 1;
+  for (let i = 0; i < size; i += 2) {
+    const grainWidth = Math.random() * 3 + 1;
     const brightness = Math.random() * 20 - 10;
 
-    ctx.strokeStyle = `rgba(139, 69, 19, ${0.1 + Math.random() * 0.1})`;
+    const opacity = 0.05 + Math.random() * 0.15;
+    ctx.strokeStyle = `rgba(139, 69, 19, ${opacity})`;
     ctx.lineWidth = grainWidth;
 
     ctx.beginPath();
     ctx.moveTo(0, i);
 
-    for (let x = 0; x < size; x += size / 10) {
-      const y = i + Math.sin(x * 0.01) * 5;
+    for (let x = 0; x < size; x += size / 20) {
+      const y = i + Math.sin(x * 0.02) * 5 + Math.cos(x * 0.01) * 3;
       ctx.lineTo(x, y);
     }
 
@@ -68,10 +83,10 @@ function generateWoodTexture(ctx, size) {
     ctx.stroke();
   }
 
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 8; i++) {
     const x = Math.random() * size;
     const y = Math.random() * size;
-    const radius = Math.random() * 20 + 5;
+    const radius = Math.random() * 25 + 8;
 
     const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
     gradient.addColorStop(0, "rgba(50, 25, 0, 0.8)");
@@ -203,31 +218,99 @@ function generateSandTexture(ctx, size) {
 }
 
 function generateMetalTexture(ctx, size) {
-  ctx.fillStyle = "#AAAAAA";
+  // Create a metallic gradient background
+  const gradient = ctx.createLinearGradient(0, 0, size, size);
+  gradient.addColorStop(0, "#DDE0E3");
+  gradient.addColorStop(0.5, "#BDC0C3");
+  gradient.addColorStop(1, "#CDCFD3");
+  
+  ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, size, size);
 
-  for (let i = 0; i < size; i += 2) {
-    const brightness = Math.random() * 30 - 15;
-    ctx.strokeStyle = `rgba(170, 170, 170, ${0.05 + Math.random() * 0.05})`;
+  // Add fine brushed metal lines
+  for (let i = 0; i < size; i += 1) {
+    const variance = Math.random() * 10 - 5;
+    const opacity = 0.03 + Math.random() * 0.03;
+    ctx.strokeStyle = `rgba(180, 180, 190, ${opacity})`;
     ctx.lineWidth = 1;
 
     ctx.beginPath();
-    ctx.moveTo(0, i);
+    ctx.moveTo(0, i + variance);
     ctx.lineTo(size, i);
     ctx.stroke();
   }
 
-  for (let i = 0; i < 30; i++) {
+  // Add metal panel effect with subtle edging
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(5, 5, size - 10, size - 10);
+  
+  ctx.strokeStyle = "rgba(60, 60, 60, 0.3)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(7, 7, size - 14, size - 14);
+
+  // Add some realistic reflections
+  for (let i = 0; i < 10; i++) {
     const x = Math.random() * size;
     const y = Math.random() * size;
-    const length = Math.random() * 40 + 10;
+    const length = Math.random() * 100 + 50;
     const angle = Math.random() * Math.PI;
+    const width = Math.random() * 15 + 5;
 
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-    ctx.lineWidth = 1;
+    // Create a shiny highlight effect
+    const highlightGradient = ctx.createLinearGradient(
+      x, y,
+      x + Math.cos(angle) * length, y + Math.sin(angle) * length
+    );
+    highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.01)");
+    highlightGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.15)");
+    highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0.01)");
+    
+    ctx.fillStyle = highlightGradient;
+    
+    // Draw a highlight streak
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+    const endX = x + Math.cos(angle) * length;
+    const endY = y + Math.sin(angle) * length;
+    
+    // Create a rounded highlight shape
+    const perpAngle = angle + Math.PI/2;
+    ctx.moveTo(
+      x + Math.cos(perpAngle) * width/2,
+      y + Math.sin(perpAngle) * width/2
+    );
+    ctx.lineTo(
+      endX + Math.cos(perpAngle) * width/2,
+      endY + Math.sin(perpAngle) * width/2
+    );
+    ctx.lineTo(
+      endX - Math.cos(perpAngle) * width/2,
+      endY - Math.sin(perpAngle) * width/2
+    );
+    ctx.lineTo(
+      x - Math.cos(perpAngle) * width/2,
+      y - Math.sin(perpAngle) * width/2
+    );
+    ctx.closePath();
+    ctx.fill();
+  }
+  
+  // Add some small scratches
+  for (let i = 0; i < 40; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const scratchLength = Math.random() * 15 + 5;
+    const angle = Math.random() * Math.PI * 2;
+    
+    ctx.strokeStyle = "rgba(60, 60, 60, 0.1)";
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(
+      x + Math.cos(angle) * scratchLength,
+      y + Math.sin(angle) * scratchLength
+    );
     ctx.stroke();
   }
 }
@@ -500,5 +583,171 @@ function generateDefaultTexture(ctx, size) {
         ctx.fillRect(x, y, 2, 2);
       }
     }
+  }
+}
+
+// New modern UI texture
+function generateModernUITexture(ctx, size) {
+  // Create a sleek gradient background
+  const gradient = ctx.createLinearGradient(0, 0, size, size);
+  gradient.addColorStop(0, "#1e293b"); // Dark slate blue
+  gradient.addColorStop(1, "#0f172a"); // Darker slate blue
+  
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  
+  // Add subtle pattern
+  ctx.fillStyle = "rgba(255, 255, 255, 0.03)";
+  for (let x = 0; x < size; x += 20) {
+    for (let y = 0; y < size; y += 20) {
+      if (Math.random() > 0.7) {
+        const patternSize = 10 + Math.random() * 20;
+        ctx.fillRect(x, y, patternSize, patternSize);
+      }
+    }
+  }
+  
+  // Add glossy highlight
+  const highlightGradient = ctx.createLinearGradient(0, 0, size, size/4);
+  highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.1)");
+  highlightGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.05)");
+  highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+  
+  ctx.fillStyle = highlightGradient;
+  ctx.fillRect(0, 0, size, size/3);
+  
+  // Add accent lines
+  ctx.strokeStyle = "#38bdf8"; // Light blue accent
+  ctx.lineWidth = 2;
+  
+  // Top accent line
+  ctx.beginPath();
+  ctx.moveTo(0, 10);
+  ctx.lineTo(size, 10);
+  ctx.globalAlpha = 0.7;
+  ctx.stroke();
+  
+  // Bottom accent line
+  ctx.beginPath();
+  ctx.moveTo(0, size - 10);
+  ctx.lineTo(size, size - 10);
+  ctx.globalAlpha = 0.4;
+  ctx.stroke();
+  
+  ctx.globalAlpha = 1.0;
+  
+  // Add some glowing dots for tech feel
+  for (let i = 0; i < 15; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const radius = Math.random() * 4 + 1;
+    
+    const dotGradient = ctx.createRadialGradient(x, y, 0, x, y, radius * 2);
+    dotGradient.addColorStop(0, "rgba(56, 189, 248, 0.8)");
+    dotGradient.addColorStop(0.5, "rgba(56, 189, 248, 0.3)");
+    dotGradient.addColorStop(1, "rgba(56, 189, 248, 0)");
+    
+    ctx.fillStyle = dotGradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// New marble texture
+function generateMarbleTexture(ctx, size) {
+  // Create base gradient
+  const gradient = ctx.createLinearGradient(0, 0, size, size);
+  gradient.addColorStop(0, "#f8f8f8");
+  gradient.addColorStop(0.3, "#f0f0f0");
+  gradient.addColorStop(0.7, "#e8e8e8");
+  gradient.addColorStop(1, "#f5f5f5");
+  
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  
+  // Add marble veins
+  for (let i = 0; i < 5; i++) {
+    const startX = Math.random() * size;
+    const startY = Math.random() * size;
+    
+    // Create a squiggly path for the vein
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    
+    let x = startX;
+    let y = startY;
+    let veinLength = Math.random() * 300 + 200;
+    
+    // Random angle for the vein direction
+    let angle = Math.random() * Math.PI * 2;
+    
+    for (let j = 0; j < veinLength; j++) {
+      // Slightly change angle for organic feel
+      angle += (Math.random() - 0.5) * 0.2;
+      
+      const stepLength = Math.random() * 2 + 1;
+      x += Math.cos(angle) * stepLength;
+      y += Math.sin(angle) * stepLength;
+      
+      // Keep vein within canvas bounds
+      if (x < 0) x = 0;
+      if (x > size) x = size;
+      if (y < 0) y = 0;
+      if (y > size) y = size;
+      
+      ctx.lineTo(x, y);
+    }
+    
+    // Color the vein
+    const veinColor = `rgba(180, 180, 180, ${0.1 + Math.random() * 0.1})`;
+    ctx.strokeStyle = veinColor;
+    ctx.lineWidth = Math.random() * 2 + 0.5;
+    ctx.stroke();
+    
+    // Add secondary, thinner veins branching from the main one
+    const branchPoints = Math.floor(Math.random() * 5) + 3;
+    for (let k = 0; k < branchPoints; k++) {
+      const branchX = startX + Math.random() * veinLength * 0.8;
+      const branchY = startY + Math.random() * veinLength * 0.8;
+      
+      ctx.beginPath();
+      ctx.moveTo(branchX, branchY);
+      
+      let branchLength = Math.random() * 100 + 50;
+      let branchAngle = Math.random() * Math.PI * 2;
+      
+      for (let m = 0; m < branchLength; m++) {
+        branchAngle += (Math.random() - 0.5) * 0.3;
+        
+        const branchStep = Math.random() * 1.5 + 0.5;
+        const newX = branchX + Math.cos(branchAngle) * branchStep * m;
+        const newY = branchY + Math.sin(branchAngle) * branchStep * m;
+        
+        if (newX < 0 || newX > size || newY < 0 || newY > size) break;
+        
+        ctx.lineTo(newX, newY);
+      }
+      
+      ctx.strokeStyle = `rgba(200, 200, 200, ${0.05 + Math.random() * 0.05})`;
+      ctx.lineWidth = Math.random() * 1 + 0.3;
+      ctx.stroke();
+    }
+  }
+  
+  // Add subtle specular highlights
+  for (let i = 0; i < 30; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const radius = Math.random() * 15 + 5;
+    
+    const highlightGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    highlightGradient.addColorStop(0, "rgba(255, 255, 255, 0.1)");
+    highlightGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+    
+    ctx.fillStyle = highlightGradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
